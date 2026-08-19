@@ -6,7 +6,25 @@ This document is the durable project memory for human and coding-agent collabora
 
 > **Future Codex sessions should read `docs/PROJECT.md` before proposing or implementing project changes.**
 
-Significant future architecture decisions may be recorded as Architecture Decision Records under `docs/adr/`, using the familiar Context → Decision → Consequences structure. Accepted ADRs are also durable project memory. This baseline does not create ADRs because this document is sufficient for the decisions made so far.
+## Documentation Map
+
+### `STATUS.md` — Current state and next step
+
+Start here. This is a short, continuously updated snapshot of what is currently implemented, the latest completed slice, repository state, next intended work, open questions, and blockers.
+
+### `PROJECT.md` — Current product and architecture source of truth
+
+This document is the canonical description of the product as it currently exists: its purpose, scope, accepted decisions, architecture boundaries, principles, and explicitly deferred work. Update it when the current truth changes; do not use it as a historical diary.
+
+### `adr/` — History and rationale for significant decisions
+
+ADRs preserve important product or architectural decisions whose rationale and consequences will be valuable later. When a significant accepted decision changes, create a new ADR that supersedes the earlier one instead of rewriting history. Routine implementation choices do not require ADRs, and existing decisions need not be converted into retroactive ADRs merely for completeness.
+
+### Git history — Implementation history
+
+Git is the factual record of what changed in the repository and when. Commits support this documentation but are not a substitute for understanding current product state.
+
+Keep `STATUS.md` concise and update it after every meaningful completed slice. Keep `PROJECT.md` accurate whenever accepted product or architecture truth changes. Documentation made inaccurate by an implementation change should be updated in the same commit as that implementation.
 
 ## Project identity and current baseline
 
