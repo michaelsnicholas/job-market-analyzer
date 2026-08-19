@@ -17,7 +17,8 @@ defmodule JobMarketAnalyzerWeb.Router do
   scope "/", JobMarketAnalyzerWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", JobLive.Index, :index
+    live "/jobs/:id", JobLive.Show, :show
   end
 
   # Other scopes may use custom stacks.

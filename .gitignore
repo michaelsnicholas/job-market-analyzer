@@ -39,3 +39,5 @@ npm-debug.log
 *.db
 *.db-*
 
+# macOS Finder metadata
+.DS_Store

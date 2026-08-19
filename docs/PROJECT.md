@@ -26,7 +26,7 @@ Git is the factual record of what changed in the repository and when. Commits su
 
 Keep `STATUS.md` concise and update it after every meaningful completed slice. Keep `PROJECT.md` accurate whenever accepted product or architecture truth changes. Documentation made inaccurate by an implementation change should be updated in the same commit as that implementation.
 
-## Project identity and current baseline
+## Project identity and current implementation
 
 - Phoenix application and OTP name: `job_market_analyzer`
 - Base Elixir module: `JobMarketAnalyzer`
@@ -40,7 +40,7 @@ Keep `STATUS.md` concise and update it after every meaningful completed slice. K
 
 The application name and the future domain context name are intentionally distinct. `JobMarket` describes the domain as a growing body of job-market evidence rather than a generic job board.
 
-This initial baseline contains only the pristine generated Phoenix application and this decision record. It does not yet contain the `JobMarket` context, product schemas, product LiveViews, CRUD, analysis, or AI integration.
+The durable corpus foundation is implemented. It contains the `JobMarket` context, a `Job` source schema, SQLite migration, LiveView intake/list and detail screens, and confirmed hard deletion. It does not contain analysis, AI integration, URL fetching, content hashing, or duplicate detection.
 
 ## Product purpose
 
@@ -89,9 +89,9 @@ If the local application proves useful, it may eventually become a hosted multi-
 
 These are possibilities, not current requirements. Do not implement them now. In particular, do not add speculative `user_id`, tenant, organization, team, role, permission, or authentication fields merely because they may eventually exist. Preserve a reasonable evolution path through sound current boundaries rather than simulating a hosted SaaS prematurely.
 
-## Future job source record
+## Job source record
 
-The durable job record must conceptually distinguish source data from derived analysis. The accepted source inputs for the first product slice are:
+The durable job record distinguishes source data from future derived analysis. Its source inputs are:
 
 - `raw_description` — required;
 - company — optional;
@@ -100,7 +100,7 @@ The durable job record must conceptually distinguish source data from derived an
 
 Company and role must not be required merely because they are useful. A job must remain capturable when they are unknown or omitted. Source URL belongs in the first intake slice because it provides useful provenance.
 
-Users must be able to delete an accidentally captured job with appropriate confirmation. Delete belongs in the first product slice.
+Users can hard-delete an accidentally captured job with confirmation. Editing and soft-delete/archive infrastructure are not part of the current implementation.
 
 ### Possible future URL intake
 
@@ -129,7 +129,7 @@ LiveView UI
 → SQLite
 ```
 
-The primary domain context for job-market functionality will be `JobMarket`. It belongs to the first product slice and must not be created in the baseline.
+The primary domain context for job-market functionality is `JobMarket`.
 
 LiveViews should call the `JobMarket` context and should not access `Repo` directly. `Repo` is responsible for persistence. Domain decisions belong in the context and supporting domain modules.
 
@@ -247,9 +247,9 @@ Application code must validate AI output before treating it as a successful stru
 
 ## Planned implementation slices
 
-### Foundation slice: durable corpus
+### Completed foundation slice: durable corpus
 
-The first product implementation after this baseline is:
+The first product implementation is complete:
 
 ```text
 capture → persist → list → view → delete
@@ -351,6 +351,6 @@ Work should proceed in small, meaningful vertical slices. After each working inc
 
 Never commit personal job data, credentials, tokens, private company information, API keys, or other material that should not be public.
 
-## Baseline stop boundary
+## Current implementation boundary
 
-The clean baseline is limited to the generated Phoenix LiveView application, generated SQLite configuration and repository hygiene, and this document. Do not begin the `JobMarket` context, Job schema, intake form, CRUD, semantic analysis, URL fetching, hashing, analysis runs, or other product functionality until the next slice is explicitly approved.
+The current application is limited to the generated Phoenix foundation and the durable source corpus: capture, persist, list, view, and confirmed hard delete. Do not begin semantic analysis, URL fetching, hashing, duplicate detection, analysis runs, or other additional product functionality until the next slice is explicitly approved.

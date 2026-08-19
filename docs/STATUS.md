@@ -3,39 +3,19 @@
 ## Current State
 
 - The Phoenix application `job_market_analyzer` has been generated as a conventional Phoenix 1.8 application using server-rendered LiveView and SQLite through Ecto.
-- The generated baseline runs successfully. At the end of the baseline slice, its test suite and `mix precommit` checks passed.
+- The first product slice is implemented: a durable local job-description corpus backed by SQLite.
+- Users can capture a job with optional Company, Role, and Source URL plus a required raw description; list saved jobs; view complete preserved source text; and hard-delete an accidental entry with confirmation.
+- Product LiveViews use the `JobMarket` context rather than accessing `Repo` directly.
 - The public repository is [michaelsnicholas/job-market-analyzer](https://github.com/michaelsnicholas/job-market-analyzer), with `main` as its default branch.
-- No product-specific functionality has been implemented.
-- There is no `JobMarket` context, job schema, product migration, intake UI, CRUD, analysis, content hashing, or URL fetching.
+- No analysis, content hashing, duplicate detection, or URL fetching has been implemented.
 
 ## Latest Completed Slice
 
-The completed baseline consists of the clean Phoenix/LiveView/SQLite application, public repository setup, baseline runtime and test verification, and the accepted product and architecture decisions in `docs/PROJECT.md`.
-
-Latest completed product/baseline commit:
-
-```text
-68d8264 Initial Phoenix application and project architecture
-```
+The durable intake foundation adds the `jobs` migration and schema, the `JobMarket` context, LiveView intake/list and detail screens, confirmed hard deletion, and context/LiveView coverage. Submitted raw descriptions are stored without trimming or normalization; trimming is used only to reject blank input. Persistence was verified across a Phoenix server restart with a temporary synthetic record that was removed afterward.
 
 ## Next Intended Slice
 
-Build the durable local job-description corpus and intake foundation:
-
-1. Paste and persist a job description in SQLite.
-2. List saved jobs.
-3. View a saved job and its complete original description.
-4. Delete an accidental entry with confirmation.
-5. Verify persistence across Phoenix server restarts.
-
-Planned intake fields:
-
-- Company — optional.
-- Role — optional.
-- Source URL — optional.
-- Raw job description — required.
-
-This slice is planned but not implemented.
+Decide and plan the first genuine analysis slice using representative job descriptions. The accepted direction is an end-to-end, zero-cost path from saved source to validated, versioned, persisted analysis displayed beside the source. Whether transparent deterministic extraction precedes or accompanies a local semantic mechanism remains deliberately unresolved.
 
 ## Future Possibility Already Identified
 
@@ -55,11 +35,13 @@ See `docs/PROJECT.md` for the complete scope boundaries and deferred concerns.
 
 ## Open Questions / Blockers
 
-None currently. Decisions intentionally deferred until later slices are documented in `docs/PROJECT.md`; they do not block the intake foundation.
+- Which initial structured analysis fields prove useful on representative job descriptions?
+- Should the next experiment begin with deterministic extraction, a local semantic mechanism, or a deliberately combined comparison?
+
+These are product decisions for the next slice, not blockers in the completed intake foundation.
 
 ## Repository State
 
 - Branch: `main`.
-- Latest completed product/baseline commit: `68d8264c916b37e78311f8e87351814984740017`.
-- Working tree: clean after this documentation-only slice is committed.
-- Local `main` and `origin/main`: synchronized after this documentation-only slice is pushed.
+- Working tree: clean after the durable intake slice is committed.
+- Local `main` and `origin/main`: synchronized after the durable intake slice is pushed.
