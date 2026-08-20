@@ -40,7 +40,7 @@ Keep `STATUS.md` concise and update it after every meaningful completed slice. K
 
 The application name and the future domain context name are intentionally distinct. `JobMarket` describes the domain as a growing body of job-market evidence rather than a generic job board.
 
-The durable corpus foundation is implemented. It contains the `JobMarket` context, a `Job` source schema, SQLite migration, LiveView intake/list and detail screens, and confirmed hard deletion. It does not contain analysis, AI integration, URL fetching, content hashing, or duplicate detection.
+The durable corpus foundation is implemented. It contains the `JobMarket` context, a `Job` source schema, SQLite migration, LiveView intake/list and detail screens, and confirmed hard deletion. A first deterministic Work Arrangement experiment is also implemented and displayed on the detail screen. The application does not contain gate evaluation, persisted extracted facts, semantic analysis, AI integration, URL fetching, content hashing, or duplicate detection.
 
 ## Product purpose
 
@@ -289,7 +289,7 @@ It includes:
 
 This is a durable corpus foundation, not the semantic-analysis product. Move through it relatively quickly rather than spending days polishing generic CRUD before testing the core analysis idea.
 
-### Next slice: deterministic Work Arrangement experiment
+### Implemented experiment: deterministic Work Arrangement extraction
 
 The first pre-analysis experiment establishes one narrow path:
 
@@ -304,11 +304,11 @@ saved raw job description
 
 Work Arrangement represents distinct employment modes explicitly available for the role: `fully_remote`, `hybrid`, and `on_site`. A posting may offer more than one mode, but hybrid is itself a mode; language describing hybrid as a combination of office and remote work does not imply that fully remote and fully on-site employment are separately available.
 
-The experiment will use a versioned plain Elixir domain result recomputed from `raw_description`, not a persisted entity. Known and unknown are distinct result states; unknown is not an arrangement value. Positive results preserve exact supporting evidence and rule identity, with source offsets when they remain straightforward and proportionate. Arrangement sets use stable ordering at display or serialization boundaries. Representative sanitized regression examples based on real posting language will test the extractor.
+The implementation uses a versioned plain Elixir domain result recomputed from `raw_description`, not a persisted entity. Known and unknown are distinct result states; unknown is not an arrangement value. Positive results preserve exact supporting evidence, rule identity, and exclusive-end UTF-8 byte offsets into the original source. Arrangement sets use stable ordering at display boundaries. Sanitized regression examples based on representative posting language define the executable behavior.
 
 Narrow deterministic scope or precedence rules are acceptable when transparent and testable, such as explicit structured role metadata or explicit role-directed statements. General document-level semantic interpretation is outside deterministic v1. Contradictory evidence normally produces unknown unless a narrow tested rule safely resolves it.
 
-This slice does not include persistence, migrations, gate settings or evaluation, Screened Out navigation, semantic verification, overrides, generalized gate infrastructure, or model/runtime integration. Its purpose is to test whether conservative deterministic Work Arrangement extraction is useful and reliable enough to justify further architecture.
+The experiment does not include persistence, migrations, gate settings or evaluation, Screened Out navigation, semantic verification, overrides, generalized gate infrastructure, or model/runtime integration. Its purpose is to test whether conservative deterministic Work Arrangement extraction is useful and reliable enough to justify further architecture. The next decision follows evaluation of its behavior on representative local postings rather than assuming which later stage should be implemented next.
 
 ### Later semantic analysis
 
@@ -383,4 +383,4 @@ Never commit personal job data, credentials, tokens, private company information
 
 ## Current implementation boundary
 
-The current application is limited to the generated Phoenix foundation and the durable source corpus: capture, persist, list, view, and confirmed hard delete. The staged gate/analysis architecture is documented but no extraction, gate, screening, semantic, or full-analysis functionality exists. The next implementation boundary is the separately approved deterministic Work Arrangement extraction/display experiment; do not expand it into deferred gate or analysis functionality without explicit approval.
+The current application includes the generated Phoenix foundation, the durable source corpus, and the non-persisted deterministic Work Arrangement extraction/display experiment. It has no gate configuration or evaluation, Screened Out projection, semantic verification, or full analysis. Evaluate the experiment before selecting another implementation slice; do not expand it into deferred gate or analysis functionality without explicit approval.

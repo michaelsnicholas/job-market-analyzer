@@ -58,5 +58,12 @@ defmodule JobMarketAnalyzer.JobMarketTest do
     test "returns a changeset for a job" do
       assert %Ecto.Changeset{} = JobMarket.change_job(%Job{})
     end
+
+    test "recomputes Work Arrangement from a job's raw source" do
+      job = job_fixture(%{raw_description: "This role is fully remote."})
+
+      assert %{status: :known, arrangements: [:fully_remote]} =
+               JobMarket.extract_work_arrangement(job)
+    end
   end
 end

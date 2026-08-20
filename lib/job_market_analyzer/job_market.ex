@@ -5,7 +5,7 @@ defmodule JobMarketAnalyzer.JobMarket do
 
   import Ecto.Query, warn: false
 
-  alias JobMarketAnalyzer.JobMarket.Job
+  alias JobMarketAnalyzer.JobMarket.{Job, WorkArrangement}
   alias JobMarketAnalyzer.Repo
 
   @doc """
@@ -23,6 +23,13 @@ defmodule JobMarketAnalyzer.JobMarket do
   Raises `Ecto.NoResultsError` if the job does not exist.
   """
   def get_job!(id), do: Repo.get!(Job, id)
+
+  @doc """
+  Recomputes the deterministic Work Arrangement fact for a saved job.
+  """
+  def extract_work_arrangement(%Job{raw_description: raw_description}) do
+    WorkArrangement.extract(raw_description)
+  end
 
   @doc """
   Creates a job from source data supplied by the user.

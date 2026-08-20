@@ -103,5 +103,44 @@ defmodule JobMarketAnalyzerWeb.JobLiveTest do
       assert has_element?(view, "#job-detail", "Role not provided")
       refute has_element?(view, "#job-source-url")
     end
+
+    test "displays a known Work Arrangement with evidence and diagnostics", %{conn: conn} do
+      source = "Overview ☕\nHybrid preferred, remote considered\nDetails"
+      job = job_fixture(%{raw_description: source})
+
+      {:ok, view, _html} = live(conn, ~p"/jobs/#{job}")
+
+      assert has_element?(view, "#work-arrangement", "Deterministic extraction · v1")
+      assert has_element?(view, "#work-arrangement-modes", "Fully remote")
+      assert has_element?(view, "#work-arrangement-modes", "Hybrid")
+
+      assert has_element?(
+               view,
+               "#work-arrangement-evidence-0",
+               "Hybrid preferred, remote considered"
+             )
+
+      assert has_element?(view, "#work-arrangement-evidence-0", "explicit_hybrid_or_remote")
+      assert has_element?(view, "#work-arrangement-evidence-0", "bytes 13–48")
+
+      rendered_source =
+        view
+        |> element("#raw-description")
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.text()
+
+      assert rendered_source == source
+    end
+
+    test "displays an unknown Work Arrangement", %{conn: conn} do
+      job = job_fixture(%{raw_description: "Location: Central City."})
+
+      {:ok, view, _html} = live(conn, ~p"/jobs/#{job}")
+
+      assert has_element?(view, "#work-arrangement-status", "Unknown")
+      assert has_element?(view, "#work-arrangement", "No sufficiently explicit")
+      refute has_element?(view, "#work-arrangement-evidence")
+    end
   end
 end

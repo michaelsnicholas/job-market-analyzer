@@ -10,8 +10,22 @@ defmodule JobMarketAnalyzerWeb.JobLive.Show do
     {:ok,
      socket
      |> assign(:page_title, job.role || "Saved job")
-     |> assign(:job, job)}
+     |> assign(:job, job)
+     |> assign(:work_arrangement, JobMarket.extract_work_arrangement(job))}
   end
+
+  defp arrangement_label(:fully_remote), do: "Fully remote"
+  defp arrangement_label(:hybrid), do: "Hybrid"
+  defp arrangement_label(:on_site), do: "On-site"
+
+  defp unknown_explanation(:no_explicit_evidence),
+    do: "No sufficiently explicit work arrangement was found."
+
+  defp unknown_explanation(:ambiguous_evidence),
+    do: "The source mentions work arrangement, but not explicitly enough to classify it."
+
+  defp unknown_explanation(:contradictory_evidence),
+    do: "The source contains conflicting explicit work-arrangement evidence."
 
   defp captured_at(datetime) do
     Calendar.strftime(datetime, "%b %d, %Y at %H:%M UTC")
@@ -45,6 +59,51 @@ defmodule JobMarketAnalyzerWeb.JobLive.Show do
             {@job.source_url}
           </.link>
         </header>
+
+        <section
+          id="work-arrangement"
+          class="rounded-box border border-base-300 bg-base-100 p-6 shadow-sm"
+        >
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 class="text-lg font-semibold">Work arrangement</h2>
+            <p class="text-xs text-base-content/55">
+              Deterministic extraction · v{@work_arrangement.extractor_version}
+            </p>
+          </div>
+
+          <div :if={@work_arrangement.status == :known} class="mt-4 space-y-4">
+            <div id="work-arrangement-modes" class="flex flex-wrap gap-2">
+              <span
+                :for={arrangement <- @work_arrangement.arrangements}
+                class="badge badge-primary badge-outline"
+              >
+                {arrangement_label(arrangement)}
+              </span>
+            </div>
+
+            <div id="work-arrangement-evidence" class="space-y-3">
+              <div
+                :for={{evidence, index} <- Enum.with_index(@work_arrangement.evidence)}
+                id={"work-arrangement-evidence-#{index}"}
+                class="rounded-box bg-base-200 p-4"
+              >
+                <blockquote class="whitespace-pre-wrap text-sm leading-6">
+                  “{evidence.text}”
+                </blockquote>
+                <p class="mt-2 font-mono text-xs text-base-content/55">
+                  {evidence.rule} · bytes {evidence.start_byte}–{evidence.end_byte}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div :if={@work_arrangement.status == :unknown} class="mt-4">
+            <p id="work-arrangement-status" class="font-medium">Unknown</p>
+            <p class="mt-1 text-sm leading-6 text-base-content/65">
+              {unknown_explanation(@work_arrangement.unknown_reason)}
+            </p>
+          </div>
+        </section>
 
         <section class="rounded-box border border-base-300 bg-base-100 p-6 shadow-sm">
           <h2 class="text-lg font-semibold">Original job description</h2>

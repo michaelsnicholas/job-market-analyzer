@@ -8,15 +8,16 @@
 - Product LiveViews use the `JobMarket` context rather than accessing `Repo` directly.
 - The staged gate/analysis architecture is accepted: preserved source, deterministic facts, mutable preferences, gate evaluation, semantic verification, and full analysis have distinct responsibilities and lifecycles. Screened Out will be derived from current evaluations rather than stored as permanent job state.
 - The public repository is [michaelsnicholas/job-market-analyzer](https://github.com/michaelsnicholas/job-market-analyzer), with `main` as its default branch.
-- No fact extraction, gate configuration/evaluation, screening, semantic analysis, content hashing, duplicate detection, or URL fetching has been implemented.
+- Deterministic Work Arrangement extraction is implemented as an experimental, versioned plain Elixir domain result recomputed from each saved raw description. It returns known explicitly offered modes or unknown, preserves exact byte-indexed evidence and rule identity, and appears on the job detail page.
+- No gate configuration/evaluation, screening, persisted extracted facts, semantic analysis, content hashing, duplicate detection, or URL fetching has been implemented.
 
 ## Latest Completed Slice
 
-The durable intake foundation adds the `jobs` migration and schema, the `JobMarket` context, LiveView intake/list and detail screens, confirmed hard deletion, and context/LiveView coverage. Submitted raw descriptions are stored without trimming or normalization; trimming is used only to reject blank input. Persistence was verified across a Phoenix server restart with a temporary synthetic record that was removed afterward.
+The deterministic Work Arrangement experiment identifies explicit fully remote, hybrid, and on-site modes conservatively, including explicit alternatives. It preserves exact supporting source evidence with UTF-8 byte offsets, rule identity, and extractor version 1; unknown remains a distinct result. Results are recomputed rather than persisted and are displayed beside the preserved source. Focused domain/context/LiveView coverage and the full project verification pass.
 
 ## Next Intended Slice
 
-Implement a focused deterministic Work Arrangement experiment: recompute a versioned plain Elixir result from each saved `raw_description`, distinguish known arrangements from unknown, preserve exact evidence and rule identity, and display the result on the existing job detail view. The candidate modes are fully remote, hybrid, and on-site; hybrid remains its own mode. The experiment adds no persistence, gate settings/evaluation, Screened Out UI, semantic verification, overrides, generalized gate infrastructure, or model integration.
+Evaluate the Work Arrangement experiment against representative local postings and decide what product slice should follow. In particular, do not assume that gate configuration, persisted facts, or semantic verification comes next until the extractor's usefulness and failure modes have been reviewed.
 
 ## Future Possibility Already Identified
 
@@ -38,10 +39,10 @@ See `docs/PROJECT.md` for the complete scope boundaries and deferred concerns.
 
 ## Open Questions / Blockers
 
-No blocker prevents the scoped Work Arrangement experiment once implementation is explicitly authorized. Final extraction rules remain experimental. General gate design, deterministic `UNKNOWN` behavior during future screening, empty accepted-value behavior, semantic result combination, override semantics, fact persistence, and model/runtime selection remain deferred.
+Final Work Arrangement rules remain experimental. General gate design, deterministic `UNKNOWN` behavior during future screening, empty accepted-value behavior, semantic result combination, override semantics, fact persistence, and model/runtime selection remain deferred.
 
 ## Repository State
 
 - Branch: `main`.
-- Working tree: clean after the gate/analysis architecture documentation is committed.
-- Local `main` and `origin/main`: synchronized after the documentation commit is pushed.
+- Working tree: clean after the Work Arrangement experiment is committed.
+- Local `main` and `origin/main`: synchronized after the implementation commit is pushed.
