@@ -151,6 +151,26 @@ preserved source
 
 Historical source underlying an analysis must remain recoverable. This principle does not impose a specific future editing UX.
 
+The accepted conceptual pipeline separates artifacts and decisions with different meanings and lifecycles:
+
+```text
+raw job source
+→ deterministic fact extraction
+→ user-configured gate evaluation
+→ semantic verification
+→ full analysis
+```
+
+Extracted facts describe the posting, not the user's preferences, and useful facts may be extracted whether or not a corresponding gate is enabled. Gate configuration represents mutable user preferences. Gate evaluation compares facts with current preferences using the conceptual states `PASS`, `FAIL`, `UNKNOWN`, and `NOT_APPLICABLE`, where `NOT_APPLICABLE` means the gate is disabled.
+
+Deterministic extraction must be conservative and inspectable: assert a fact only from sufficiently explicit evidence, otherwise return unknown. It must not manufacture pseudo-confidence scores. Ambiguous or contradictory evidence should normally remain unknown unless a narrow, transparent, tested precedence rule resolves it. All enabled deterministic gates should eventually run so their complete results can be inspected rather than stopping evaluation at the first failure.
+
+Under the current architectural direction, a deterministic failure prevents automatic progression to semantic processing, but it does not delete or permanently classify the job. Screened Out is a derived view over current effective evaluations, not an authoritative status stored on the source. Preference changes may change current eligibility without modifying source-derived facts or destroying existing semantic/full analysis. Human reconsideration and override are intended but not yet designed.
+
+Semantic verification is distinct from deterministic extraction. Deterministic `PASS` and `UNKNOWN` may both require contextual verification. Semantic verification should add separate contextual judgments where practical rather than rewrite a correct deterministic fact. The exact policy for combining semantic results remains deferred.
+
+Full analysis is a later, richer stage than narrow semantic verification. The architecture may eventually use progressively different computational tiers while the current phase remains zero-cost and local. Stable boundaries should be application-owned capability and input/output contracts, not provider assumptions. Do not add generic provider behaviours, registries, adapters, or switching infrastructure before concrete implementations justify them. See [ADR-001](adr/001-separate-analysis-stages-and-derive-screening.md) for the rationale and consequences of these boundaries.
+
 Analysis must not become dozens of nullable columns on the `jobs` table. When analysis is implemented, the likely design is separate, versioned analysis records or runs associated with the source job. A future run may need information resembling:
 
 - job/source reference;
@@ -269,34 +289,30 @@ It includes:
 
 This is a durable corpus foundation, not the semantic-analysis product. Move through it relatively quickly rather than spending days polishing generic CRUD before testing the core analysis idea.
 
-### First true analysis slice
+### Next slice: deterministic Work Arrangement experiment
 
-After the corpus foundation, establish one complete path:
+The first pre-analysis experiment establishes one narrow path:
 
 ```text
-saved source
-→ actual zero-cost semantic mechanism
-→ structured analysis contract
-→ validated output
-→ persisted versioned analysis run
-→ analysis displayed alongside source
+saved raw job description
+→ deterministic Work Arrangement extraction
+→ known or unknown result
+→ normalized explicitly available arrangement mode(s)
+→ supporting evidence
+→ display on the existing job detail view
 ```
 
-Choose the exact schema, model, and runtime using real source examples rather than assumptions made during bootstrap.
+Work Arrangement represents distinct employment modes explicitly available for the role: `fully_remote`, `hybrid`, and `on_site`. A posting may offer more than one mode, but hybrid is itself a mode; language describing hybrid as a combination of office and remote work does not imply that fully remote and fully on-site employment are separately available.
 
-### Possible deterministic experiment
+The experiment will use a versioned plain Elixir domain result recomputed from `raw_description`, not a persisted entity. Known and unknown are distinct result states; unknown is not an arrangement value. Positive results preserve exact supporting evidence and rule identity, with source offsets when they remain straightforward and proportionate. Arrangement sets use stable ordering at display or serialization boundaries. Representative sanitized regression examples based on real posting language will test the extractor.
 
-Before or alongside semantic analysis, transparent deterministic extraction may target high-confidence explicit signals such as:
+Narrow deterministic scope or precedence rules are acceptable when transparent and testable, such as explicit structured role metadata or explicit role-directed statements. General document-level semantic interpretation is outside deterministic v1. Contradictory evidence normally produces unknown unless a narrow tested rule safely resolves it.
 
-- Requirements and Preferred Qualifications sections;
-- bullet segmentation;
-- explicit years-of-experience patterns;
-- small, visible technology vocabularies;
-- remote, hybrid, or on-site phrases;
-- salary ranges;
-- explicit numbers and metadata.
+This slice does not include persistence, migrations, gate settings or evaluation, Screened Out navigation, semantic verification, overrides, generalized gate infrastructure, or model/runtime integration. Its purpose is to test whether conservative deterministic Work Arrangement extraction is useful and reliable enough to justify further architecture.
 
-Deterministic extraction must remain inspectable and must not pretend to provide general semantic understanding. Whether it precedes or accompanies the first semantic slice remains deferred.
+### Later semantic analysis
+
+After the deterministic experiment and separately approved screening work, establish a zero-cost semantic path with application-owned structured contracts, validation, versioned persisted results, and display alongside source. Choose the exact schema, model, and runtime using representative source examples rather than bootstrap assumptions.
 
 ## Deferred duplicate detection
 
@@ -341,6 +357,20 @@ Do not design or implement the following until separately approved:
 - résumé matching;
 - cross-job recommendations.
 
+The following gate and analysis details also remain provisional or deferred:
+
+- a generalized gate catalog or framework;
+- the final Work Arrangement phrase and rule catalog;
+- generalized extracted-fact persistence;
+- gate preference and evaluation history;
+- human override semantics;
+- semantic result-combination policy;
+- Salary screening and currency handling;
+- geographic eligibility and visa/work-authorization verification;
+- materialized workflow or Screened Out projections;
+- deterministic `UNKNOWN` behavior after screening exists but before semantic verification exists;
+- the meaning or validity of an enabled gate with no accepted values.
+
 Import/export is a plausible future bridge from local to hosted usage, but its format is deferred until the data schema stabilizes.
 
 ## Repository practices
@@ -353,4 +383,4 @@ Never commit personal job data, credentials, tokens, private company information
 
 ## Current implementation boundary
 
-The current application is limited to the generated Phoenix foundation and the durable source corpus: capture, persist, list, view, and confirmed hard delete. Do not begin semantic analysis, URL fetching, hashing, duplicate detection, analysis runs, or other additional product functionality until the next slice is explicitly approved.
+The current application is limited to the generated Phoenix foundation and the durable source corpus: capture, persist, list, view, and confirmed hard delete. The staged gate/analysis architecture is documented but no extraction, gate, screening, semantic, or full-analysis functionality exists. The next implementation boundary is the separately approved deterministic Work Arrangement extraction/display experiment; do not expand it into deferred gate or analysis functionality without explicit approval.

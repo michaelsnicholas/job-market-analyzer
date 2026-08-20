@@ -6,8 +6,9 @@
 - The first product slice is implemented: a durable local job-description corpus backed by SQLite.
 - Users can capture a job with optional Company, Role, and Source URL plus a required raw description; list saved jobs; view complete preserved source text; and hard-delete an accidental entry with confirmation.
 - Product LiveViews use the `JobMarket` context rather than accessing `Repo` directly.
+- The staged gate/analysis architecture is accepted: preserved source, deterministic facts, mutable preferences, gate evaluation, semantic verification, and full analysis have distinct responsibilities and lifecycles. Screened Out will be derived from current evaluations rather than stored as permanent job state.
 - The public repository is [michaelsnicholas/job-market-analyzer](https://github.com/michaelsnicholas/job-market-analyzer), with `main` as its default branch.
-- No analysis, content hashing, duplicate detection, or URL fetching has been implemented.
+- No fact extraction, gate configuration/evaluation, screening, semantic analysis, content hashing, duplicate detection, or URL fetching has been implemented.
 
 ## Latest Completed Slice
 
@@ -15,7 +16,7 @@ The durable intake foundation adds the `jobs` migration and schema, the `JobMark
 
 ## Next Intended Slice
 
-Decide and plan the first genuine analysis slice using representative job descriptions. The accepted direction is an end-to-end, zero-cost path from saved source to validated, versioned, persisted analysis displayed beside the source. Whether transparent deterministic extraction precedes or accompanies a local semantic mechanism remains deliberately unresolved.
+Implement a focused deterministic Work Arrangement experiment: recompute a versioned plain Elixir result from each saved `raw_description`, distinguish known arrangements from unknown, preserve exact evidence and rule identity, and display the result on the existing job detail view. The candidate modes are fully remote, hybrid, and on-site; hybrid remains its own mode. The experiment adds no persistence, gate settings/evaluation, Screened Out UI, semantic verification, overrides, generalized gate infrastructure, or model integration.
 
 ## Future Possibility Already Identified
 
@@ -24,6 +25,8 @@ A later version may accept a source URL instead of pasted text, retrieve the job
 ## Explicitly Not Implementing Yet
 
 - Semantic or AI analysis and local LLM integration.
+- Gate configuration/evaluation and Screened Out navigation.
+- Persisted extracted facts and generalized gate infrastructure.
 - URL fetching.
 - User accounts, authentication, or hosted multi-user architecture.
 - Cross-job analytics.
@@ -35,13 +38,10 @@ See `docs/PROJECT.md` for the complete scope boundaries and deferred concerns.
 
 ## Open Questions / Blockers
 
-- Which initial structured analysis fields prove useful on representative job descriptions?
-- Should the next experiment begin with deterministic extraction, a local semantic mechanism, or a deliberately combined comparison?
-
-These are product decisions for the next slice, not blockers in the completed intake foundation.
+No blocker prevents the scoped Work Arrangement experiment once implementation is explicitly authorized. Final extraction rules remain experimental. General gate design, deterministic `UNKNOWN` behavior during future screening, empty accepted-value behavior, semantic result combination, override semantics, fact persistence, and model/runtime selection remain deferred.
 
 ## Repository State
 
 - Branch: `main`.
-- Working tree: clean after the durable intake slice is committed.
-- Local `main` and `origin/main`: synchronized after the durable intake slice is pushed.
+- Working tree: clean after the gate/analysis architecture documentation is committed.
+- Local `main` and `origin/main`: synchronized after the documentation commit is pushed.
