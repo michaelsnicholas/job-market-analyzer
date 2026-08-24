@@ -121,21 +121,22 @@ defmodule JobMarketAnalyzer.JobMarket.WorkArrangement do
      [:fully_remote]}
   ]
 
+  @partial_week_office_patterns [
+    ~r/\b(?:one|two|three|four|1|2|3|4)(?:\s*(?:[-–—]\s*to\s*[-–—]|[-–—]|to)\s*(?:one|two|three|four|five|1|2|3|4|5))?\s+days?\s+(?:a|per|each)\s+week\s+(?:in|at)\s+(?:(?:the|our)\s+)?office\b/iu,
+    ~r/\b(?:in|at)\s+(?:(?:the|our)\s+)?office\s+(?:one|two|three|four|1|2|3|4)(?:\s*(?:[-–—]\s*to\s*[-–—]|[-–—]|to)\s*(?:one|two|three|four|five|1|2|3|4|5))?\s+days?\s+(?:a|per|each)\s+week\b/iu
+  ]
+
   @blocked_patterns [
     ~r/\bnot\s+(?:eligible\s+for\s+)?(?:fully\s+)?remote\b/iu,
     ~r/\bremote\s+work\s+is\s+not\s+available\b/iu,
     ~r/\bno\s+remote\s+option\b/iu,
     ~r/\btemporarily\s+(?:fully\s+)?remote\b/iu,
     ~r/\b(?:fully\s+)?remote\s+after\s+(?:probation|onboarding|training)\b/iu,
-    ~r/\bhybrid\s+after\s+(?:probation|onboarding|training)\b/iu,
-    ~r/\b(?:three|four|3|4)\s+days?\s+per\s+week\s+in\s+(?:the|our)\s+office\b/iu,
-    ~r/\b(?:four|4)\s*(?:-|–|—)?\s*to\s*(?:-|–|—)?\s*(?:five|5)\s+days?\s+per\s+week\s+in\s+(?:the|our)\s+office\b/iu
+    ~r/\bhybrid\s+after\s+(?:probation|onboarding|training)\b/iu
   ]
 
   @ambiguous_patterns [
     ~r/\bnot\s+fully\s+remote\b/iu,
-    ~r/\b(?:three|four|3|4)\s+days?\s+per\s+week\s+in\s+(?:the|our)\s+office\b/iu,
-    ~r/\b(?:four|4)\s*(?:-|–|—)?\s*to\s*(?:-|–|—)?\s*(?:five|5)\s+days?\s+per\s+week\s+in\s+(?:the|our)\s+office\b/iu,
     ~r/\btemporarily\s+(?:fully\s+)?remote\b/iu,
     ~r/\b(?:fully\s+)?remote\s+after\s+(?:probation|onboarding|training)\b/iu,
     ~r/\bhybrid\s+after\s+(?:probation|onboarding|training)\b/iu,
@@ -149,7 +150,7 @@ defmodule JobMarketAnalyzer.JobMarket.WorkArrangement do
   @doc "Extracts explicitly offered work arrangements from raw job source."
   @spec extract(String.t()) :: Result.t()
   def extract(source) when is_binary(source) do
-    blocked_ranges = ranges_for(@blocked_patterns, source)
+    blocked_ranges = ranges_for(@blocked_patterns ++ @partial_week_office_patterns, source)
 
     candidates =
       @rules
@@ -204,7 +205,10 @@ defmodule JobMarketAnalyzer.JobMarket.WorkArrangement do
 
   defp resolve([], source) do
     reason =
-      if Enum.any?(@ambiguous_patterns, &Regex.match?(&1, source)) do
+      if Enum.any?(
+           @ambiguous_patterns ++ @partial_week_office_patterns,
+           &Regex.match?(&1, source)
+         ) do
         :ambiguous_evidence
       else
         :no_explicit_evidence

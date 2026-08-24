@@ -161,7 +161,7 @@ defmodule JobMarketAnalyzerWeb.JobLive.Index do
                       href={job.source_url}
                       target="_blank"
                       rel="noreferrer"
-                      class="link link-primary break-all"
+                      class="link link-primary whitespace-nowrap"
                     >
                       Open source
                     </.link>

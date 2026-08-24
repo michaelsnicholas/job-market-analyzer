@@ -94,6 +94,11 @@ defmodule JobMarketAnalyzer.JobMarket.WorkArrangementTest do
         "three days per week in the office",
         "four days per week in our office",
         "four-to-five days per week in the office",
+        "2–3 days a week in the office",
+        "2-3 days per week in office",
+        "2—3 days each week at our office",
+        "three days a week at the office",
+        "This role is based in our London office and will require you to be in the office 2–3 days a week.",
         "temporarily remote",
         "temporarily fully remote",
         "remote after probation",
@@ -198,7 +203,10 @@ defmodule JobMarketAnalyzer.JobMarket.WorkArrangementTest do
     assert result.status == :unknown, "expected unknown result for #{inspect(source)}"
     assert result.arrangements == []
     assert result.evidence == []
-    assert result.unknown_reason == expected_reason
+
+    assert result.unknown_reason == expected_reason,
+           "unexpected unknown reason for #{inspect(source)}"
+
     assert result.extractor_version == 1
   end
 end

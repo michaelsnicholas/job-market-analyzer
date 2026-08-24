@@ -25,11 +25,29 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/job_market_analyzer"
 import topbar from "../vendor/topbar"
 
+const Hooks = {
+  AutoDismissFlash: {
+    mounted() {
+      this.scheduleDismiss()
+    },
+    updated() {
+      this.scheduleDismiss()
+    },
+    scheduleDismiss() {
+      window.clearTimeout(this.timer)
+      this.timer = window.setTimeout(() => this.el.click(), Number(this.el.dataset.autoDismissMs))
+    },
+    destroyed() {
+      window.clearTimeout(this.timer)
+    },
+  },
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, ...Hooks},
 })
 
 // Show progress bar on live navigation and form submits
@@ -80,4 +98,3 @@ if (process.env.NODE_ENV === "development") {
     window.liveReloader = reloader
   })
 }
-

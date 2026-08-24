@@ -13,6 +13,7 @@ defmodule JobMarketAnalyzerWeb.JobLiveTest do
       assert has_element?(view, "#job-intake")
       assert has_element?(view, "#job-form")
       assert has_element?(view, "#jobs-empty", "No jobs saved yet.")
+      assert has_element?(view, "#client-error:not([phx-hook])")
     end
 
     test "validates a blank raw description", %{conn: conn} do
@@ -44,7 +45,15 @@ defmodule JobMarketAnalyzerWeb.JobLiveTest do
       assert has_element?(view, "#jobs-#{job.id}", "Systems Engineer")
       assert has_element?(view, "#jobs-#{job.id}", "Design dependable systems.")
       assert has_element?(view, "#jobs-#{job.id} a[href='https://example.com/jobs/systems']")
+      assert has_element?(view, "#jobs-#{job.id} a.whitespace-nowrap", "Open source")
       assert has_element?(view, "#view-job-#{job.id}[href='/jobs/#{job.id}']")
+
+      assert has_element?(
+               view,
+               "#flash-info[phx-hook='AutoDismissFlash'][data-auto-dismiss-ms='4000']"
+             )
+
+      assert has_element?(view, "#flash-info button[aria-label='close']")
     end
 
     test "shows quiet fallbacks for omitted optional fields", %{conn: conn} do
