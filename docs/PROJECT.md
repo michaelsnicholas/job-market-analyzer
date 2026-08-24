@@ -40,7 +40,7 @@ Keep `STATUS.md` concise and update it after every meaningful completed slice. K
 
 The application name and the future domain context name are intentionally distinct. `JobMarket` describes the domain as a growing body of job-market evidence rather than a generic job board.
 
-The durable corpus foundation is implemented. It contains the `JobMarket` context, a `Job` source schema, SQLite migration, LiveView intake/list and detail screens, and confirmed hard deletion. A first deterministic Work Arrangement experiment is also implemented and displayed on the detail screen. A guarded public-source fetch primitive implements the outbound security and resource-safety boundary for future URL intake, but there is no URL intake UI, content extraction, or persistence integration. The application does not contain gate evaluation, persisted extracted facts, semantic analysis, AI integration, content hashing, or duplicate detection.
+The durable corpus foundation is implemented. It contains the `JobMarket` context, a `Job` source schema, SQLite migration, LiveView intake/list and detail screens, and confirmed hard deletion. A first deterministic Work Arrangement experiment is also implemented and displayed on the detail screen. URL intake now has guarded public-source fetching plus structured/generic extraction into transient reviewable drafts, but no URL intake UI, Job creation from drafts, or provenance persistence integration. The application does not contain gate evaluation, persisted extracted facts, semantic analysis, AI integration, content hashing, or duplicate detection.
 
 ## Product purpose
 
@@ -139,7 +139,9 @@ URL retrieval introduces an SSRF and resource-safety boundary that must be prese
 
 V1 permits HTTPS on port 443 and HTTP on port 80, preferring HTTPS. Redirects must be bounded and repeat the complete URL, DNS, and address validation process. Retrieval must also enforce request and connection timeouts, bounded network and decompressed sizes, accepted content types, safe URL logging, and untrusted-content handling. It sends no browser credentials or cookies, fetches no subresources, executes no scripts, and never renders fetched HTML as active content.
 
-The application-owned guarded acquisition primitive uses the existing Req/Finch/Mint stack and `inet_cidr` for CIDR containment math. It validates both address families, rejects a hostname if any resolved address violates the public-address policy, pins each request to a selected numeric address, handles redirects itself, and bounds time, network bytes, decompressed bytes, media types, and content encodings. It returns transient application-owned result or error data and does not create or update a Job. SafeURL and Paraxial are not adopted for this boundary; content extraction and approval of a future Floki dependency remain separate concerns.
+The application-owned guarded acquisition primitive uses the existing Req/Finch/Mint stack and `inet_cidr` for CIDR containment math. It validates both address families, rejects a hostname if any resolved address violates the public-address policy, pins each request to a selected numeric address, handles redirects itself, and bounds time, network bytes, decompressed bytes, media types, and content encodings. It returns transient application-owned result or error data and does not create or update a Job. SafeURL and Paraxial are not adopted for this boundary.
+
+Bounded fetch results may now be converted into transient application-owned drafts. Extraction uses Floki to prefer usable `JobPosting` JSON-LD from HTML or direct JSON, then falls back to conservative generic HTML content selection. Draft text is readable rather than raw HTML; metadata remains a suggestion with deterministic provenance; warnings and inadequate/ambiguous failures use stable application codes. The initial editable source and retained original extracted text are identical. Extraction does not persist a draft or create a Job, and human review remains the completeness boundary.
 
 ## Application architecture
 
@@ -376,14 +378,13 @@ Do not design or implement the following until separately approved:
 - automatic taxonomies or elaborate skill/technology ontologies;
 - model fine-tuning or agentic tool use;
 - high-volume scaling or audit/compliance systems;
-- URL intake UI, content extraction, and persistence integration beyond the guarded-fetch primitive;
+- URL intake UI, Job creation from drafts, and provenance persistence integration beyond transient extraction;
 - résumé matching;
 - cross-job recommendations.
 
 The following URL-acquisition capabilities also remain deferred:
 
 - exact provenance schema fields and types;
-- Floki dependency approval and installation;
 - dedicated ATS adapters or a generic adapter/plugin framework;
 - headless-browser rendering, authenticated scraping, and CAPTCHA or anti-bot circumvention;
 - canonical employer-source discovery;
@@ -415,4 +416,4 @@ Never commit personal job data, credentials, tokens, private company information
 
 ## Current implementation boundary
 
-The current application includes the generated Phoenix foundation, the durable source corpus, the non-persisted deterministic Work Arrangement extraction/display experiment, and a transient guarded public-source fetch primitive. The fetch primitive has no URL intake UI, content extraction, or persistence integration. The application has no gate configuration or evaluation, Screened Out projection, semantic verification, or full analysis. Do not expand either experiment into deferred functionality without explicit approval.
+The current application includes the generated Phoenix foundation, the durable source corpus, the non-persisted deterministic Work Arrangement extraction/display experiment, guarded public-source fetching, and transient structured/generic source-draft construction. URL intake has no review UI, Job creation, or provenance persistence integration. The application has no gate configuration or evaluation, Screened Out projection, semantic verification, or full analysis. Do not expand these boundaries into deferred functionality without explicit approval.

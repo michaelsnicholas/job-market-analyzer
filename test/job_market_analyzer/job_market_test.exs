@@ -3,6 +3,7 @@ defmodule JobMarketAnalyzer.JobMarketTest do
 
   alias JobMarketAnalyzer.JobMarket
   alias JobMarketAnalyzer.JobMarket.Job
+  alias JobMarketAnalyzer.Repo
 
   import JobMarketAnalyzer.JobMarketFixtures
 
@@ -69,6 +70,40 @@ defmodule JobMarketAnalyzer.JobMarketTest do
     test "delegates public-source fetching without database interaction" do
       assert {:error, %{reason: :unsupported_scheme, stage: :url_validation}} =
                JobMarket.fetch_public_source("file:///etc/passwd")
+    end
+
+    test "prepares a transient source draft through guarded fetching without creating a job" do
+      before_count = Repo.aggregate(Job, :count)
+
+      body = """
+      <html><body><main><h1>Program Director</h1>
+      <p>Lead complex programs across product, engineering, and operations teams.</p></main></body></html>
+      """
+
+      requester = fn opts ->
+        request = Req.new(method: :get, url: opts[:url])
+        response = Req.Response.new(status: 200, headers: [{"content-type", "text/html"}])
+        {:cont, {_request, response}} = opts[:into].({:data, body}, {request, response})
+        {:ok, response}
+      end
+
+      assert {:ok, %{raw_description: description, source_acquisition_method: :generic_html}} =
+               JobMarket.prepare_source_draft("https://jobs.example/role",
+                 resolver: fn
+                   _host, :inet -> {:ok, [{8, 8, 8, 8}]}
+                   _host, :inet6 -> {:ok, []}
+                 end,
+                 requester: requester,
+                 fetched_at: fn -> ~U[2026-08-24 12:00:00Z] end
+               )
+
+      assert description =~ "Lead complex programs"
+      assert Repo.aggregate(Job, :count) == before_count
+    end
+
+    test "passes a guarded fetch error through source-draft preparation" do
+      assert {:error, %{reason: :unsupported_scheme, stage: :url_validation}} =
+               JobMarket.prepare_source_draft("file:///etc/passwd")
     end
   end
 end

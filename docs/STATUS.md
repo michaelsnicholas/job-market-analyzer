@@ -11,26 +11,27 @@
 - Deterministic Work Arrangement extraction is implemented as an experimental, versioned plain Elixir domain result recomputed from each saved raw description. It returns known explicitly offered modes or unknown, preserves exact byte-indexed evidence and rule identity, and appears on the job detail page.
 - URL-first intake architecture is accepted in ADR-002: guarded retrieval will produce a reviewable draft that converges with manual capture on user-approved canonical text, with lightweight Job provenance and human review before persistence.
 - The first URL-intake implementation slice provides a guarded, bounded public-source fetch primitive. It validates every URL/DNS/IP hop, pins each request to a selected public address, handles redirects itself, and returns transient response or stable error data.
-- No URL intake UI, source extraction, or persistence integration has been implemented. No gate configuration/evaluation, screening, persisted extracted facts, semantic analysis, content hashing, or duplicate detection exists.
+- Structured `JobPosting`/generic HTML extraction and transient reviewable Draft construction are implemented behind the guarded fetcher. Drafts retain source URLs and acquisition time, preserve the initial extracted text for later edit detection, and carry deterministic metadata suggestions, method/version information, and stable warnings without persistence.
+- No URL intake UI, Job creation from fetched sources, or provenance persistence integration has been implemented. No gate configuration/evaluation, screening, persisted extracted facts, semantic analysis, content hashing, or duplicate detection exists.
 
 ## Latest Completed Slice
 
-The guarded public-source fetch primitive implements the first security and resource-safety boundary required by ADR-002. It accepts only approved public HTTP/HTTPS destinations, connects to a validated numeric address while preserving logical host identity, revalidates manual redirects, and enforces time, media-type, encoding, network-size, and decompressed-size limits. It does not parse or persist retrieved content.
+The second URL-intake slice converts bounded fetch results into transient drafts. It prefers usable `JobPosting` JSON-LD, falls back to conservative generic HTML extraction, preserves readable structural text, and returns stable inadequate/ambiguous extraction failures rather than fabricating source. Nothing is persisted.
 
 ## Next Intended Slice
 
-Decide the next separately approved URL-intake slice. Source extraction, review UI, and provenance persistence remain unimplemented and must not be inferred from the guarded-fetch primitive.
+Run real-source QA through IEx/manual calls, then decide the next separately approved URL-intake slice. Review UI, Job creation, and provenance persistence remain unimplemented.
 
 ## Accepted Next Architecture, Not Yet Implemented
 
-URL-first intake will coexist with manual paste. Beyond the implemented guarded-fetch primitive, its accepted boundary includes structured or generic extraction, a transient user-reviewable draft, and explicit Job creation using the exact approved text. Those later stages remain future work.
+URL-first intake will coexist with manual paste. Guarded acquisition, structured/generic extraction, and transient draft construction are implemented. A user-reviewable UI and explicit Job creation using the exact approved text remain future work.
 
 ## Explicitly Not Implementing Yet
 
 - Semantic or AI analysis and local LLM integration.
 - Gate configuration/evaluation and Screened Out navigation.
 - Persisted extracted facts and generalized gate infrastructure.
-- URL intake UI, source extraction, and persistence integration.
+- URL intake UI, Job creation from drafts, and provenance persistence integration.
 - User accounts, authentication, or hosted multi-user architecture.
 - Cross-job analytics.
 - Embeddings or vector search.
@@ -46,4 +47,4 @@ Final Work Arrangement rules remain experimental. General gate design, determini
 ## Repository State
 
 - Branch: `main`.
-- Working tree: contains the approved guarded-fetch implementation and documentation changes pending review; no commit or push has been made for this slice.
+- Working tree: contains the approved Slice 2 extraction implementation and documentation changes pending review; no commit or push has been made for this slice.

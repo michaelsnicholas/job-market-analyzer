@@ -5,7 +5,13 @@ defmodule JobMarketAnalyzer.JobMarket do
 
   import Ecto.Query, warn: false
 
-  alias JobMarketAnalyzer.JobMarket.{Job, SourceAcquisition.GuardedFetcher, WorkArrangement}
+  alias JobMarketAnalyzer.JobMarket.{
+    Job,
+    SourceAcquisition.Extractor,
+    SourceAcquisition.GuardedFetcher,
+    WorkArrangement
+  }
+
   alias JobMarketAnalyzer.Repo
 
   @doc """
@@ -37,6 +43,20 @@ defmodule JobMarketAnalyzer.JobMarket do
   The bounded response is transient and does not create or update a job.
   """
   def fetch_public_source(url), do: GuardedFetcher.fetch(url)
+
+  @doc """
+  Fetches a public source and constructs a transient reviewable draft.
+
+  Nothing is persisted and no job is created.
+  """
+  def prepare_source_draft(url), do: prepare_source_draft(url, [])
+
+  @doc false
+  def prepare_source_draft(url, fetch_opts) do
+    with {:ok, fetch_result} <- GuardedFetcher.fetch(url, fetch_opts) do
+      Extractor.extract(fetch_result)
+    end
+  end
 
   @doc """
   Creates a job from source data supplied by the user.
