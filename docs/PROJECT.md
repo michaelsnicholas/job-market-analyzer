@@ -40,7 +40,7 @@ Keep `STATUS.md` concise and update it after every meaningful completed slice. K
 
 The application name and the future domain context name are intentionally distinct. `JobMarket` describes the domain as a growing body of job-market evidence rather than a generic job board.
 
-The durable corpus foundation is implemented. It contains the `JobMarket` context, a `Job` source schema, SQLite migration, LiveView intake/list and detail screens, and confirmed hard deletion. A first deterministic Work Arrangement experiment is also implemented and displayed on the detail screen. The application does not contain gate evaluation, persisted extracted facts, semantic analysis, AI integration, URL fetching, content hashing, or duplicate detection.
+The durable corpus foundation is implemented. It contains the `JobMarket` context, a `Job` source schema, SQLite migration, LiveView intake/list and detail screens, and confirmed hard deletion. A first deterministic Work Arrangement experiment is also implemented and displayed on the detail screen. A guarded public-source fetch primitive implements the outbound security and resource-safety boundary for future URL intake, but there is no URL intake UI, content extraction, or persistence integration. The application does not contain gate evaluation, persisted extracted facts, semantic analysis, AI integration, content hashing, or duplicate detection.
 
 ## Product purpose
 
@@ -139,7 +139,7 @@ URL retrieval introduces an SSRF and resource-safety boundary that must be prese
 
 V1 permits HTTPS on port 443 and HTTP on port 80, preferring HTTPS. Redirects must be bounded and repeat the complete URL, DNS, and address validation process. Retrieval must also enforce request and connection timeouts, bounded network and decompressed sizes, accepted content types, safe URL logging, and untrusted-content handling. It sends no browser credentials or cookies, fetches no subresources, executes no scripts, and never renders fetched HTML as active content.
 
-The existing Req/Finch/Mint stack will support an application-owned guarded acquisition policy. SafeURL and Paraxial are not adopted for this boundary. Exact address ranges, timeouts, byte limits, client configuration, extraction rules, tests, and approval of a future Floki dependency remain implementation concerns.
+The application-owned guarded acquisition primitive uses the existing Req/Finch/Mint stack and `inet_cidr` for CIDR containment math. It validates both address families, rejects a hostname if any resolved address violates the public-address policy, pins each request to a selected numeric address, handles redirects itself, and bounds time, network bytes, decompressed bytes, media types, and content encodings. It returns transient application-owned result or error data and does not create or update a Job. SafeURL and Paraxial are not adopted for this boundary; content extraction and approval of a future Floki dependency remain separate concerns.
 
 ## Application architecture
 
@@ -376,14 +376,13 @@ Do not design or implement the following until separately approved:
 - automatic taxonomies or elaborate skill/technology ontologies;
 - model fine-tuning or agentic tool use;
 - high-volume scaling or audit/compliance systems;
-- URL retrieval implementation, until separately authorized from the accepted architecture in ADR-002;
+- URL intake UI, content extraction, and persistence integration beyond the guarded-fetch primitive;
 - résumé matching;
 - cross-job recommendations.
 
 The following URL-acquisition capabilities also remain deferred:
 
 - exact provenance schema fields and types;
-- exact security timeout, redirect, and byte limits;
 - Floki dependency approval and installation;
 - dedicated ATS adapters or a generic adapter/plugin framework;
 - headless-browser rendering, authenticated scraping, and CAPTCHA or anti-bot circumvention;
@@ -416,4 +415,4 @@ Never commit personal job data, credentials, tokens, private company information
 
 ## Current implementation boundary
 
-The current application includes the generated Phoenix foundation, the durable source corpus, and the non-persisted deterministic Work Arrangement extraction/display experiment. It has no gate configuration or evaluation, Screened Out projection, semantic verification, or full analysis. Evaluate the experiment before selecting another implementation slice; do not expand it into deferred gate or analysis functionality without explicit approval.
+The current application includes the generated Phoenix foundation, the durable source corpus, the non-persisted deterministic Work Arrangement extraction/display experiment, and a transient guarded public-source fetch primitive. The fetch primitive has no URL intake UI, content extraction, or persistence integration. The application has no gate configuration or evaluation, Screened Out projection, semantic verification, or full analysis. Do not expand either experiment into deferred functionality without explicit approval.

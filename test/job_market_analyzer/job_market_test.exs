@@ -65,5 +65,10 @@ defmodule JobMarketAnalyzer.JobMarketTest do
       assert %{status: :known, arrangements: [:fully_remote]} =
                JobMarket.extract_work_arrangement(job)
     end
+
+    test "delegates public-source fetching without database interaction" do
+      assert {:error, %{reason: :unsupported_scheme, stage: :url_validation}} =
+               JobMarket.fetch_public_source("file:///etc/passwd")
+    end
   end
 end

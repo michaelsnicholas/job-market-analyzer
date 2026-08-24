@@ -10,26 +10,27 @@
 - The public repository is [michaelsnicholas/job-market-analyzer](https://github.com/michaelsnicholas/job-market-analyzer), with `main` as its default branch.
 - Deterministic Work Arrangement extraction is implemented as an experimental, versioned plain Elixir domain result recomputed from each saved raw description. It returns known explicitly offered modes or unknown, preserves exact byte-indexed evidence and rule identity, and appears on the job detail page.
 - URL-first intake architecture is accepted in ADR-002: guarded retrieval will produce a reviewable draft that converges with manual capture on user-approved canonical text, with lightweight Job provenance and human review before persistence.
-- No gate configuration/evaluation, screening, persisted extracted facts, semantic analysis, content hashing, duplicate detection, or URL fetching has been implemented.
+- The first URL-intake implementation slice provides a guarded, bounded public-source fetch primitive. It validates every URL/DNS/IP hop, pins each request to a selected public address, handles redirects itself, and returns transient response or stable error data.
+- No URL intake UI, source extraction, or persistence integration has been implemented. No gate configuration/evaluation, screening, persisted extracted facts, semantic analysis, content hashing, or duplicate detection exists.
 
 ## Latest Completed Slice
 
-The deterministic Work Arrangement experiment identifies explicit fully remote, hybrid, and on-site modes conservatively, including explicit alternatives. It preserves exact supporting source evidence with UTF-8 byte offsets, rule identity, and extractor version 1; unknown remains a distinct result. Results are recomputed rather than persisted and are displayed beside the preserved source. Focused domain/context/LiveView coverage and the full project verification pass.
+The guarded public-source fetch primitive implements the first security and resource-safety boundary required by ADR-002. It accepts only approved public HTTP/HTTPS destinations, connects to a validated numeric address while preserving logical host identity, revalidates manual redirects, and enforces time, media-type, encoding, network-size, and decompressed-size limits. It does not parse or persist retrieved content.
 
 ## Next Intended Slice
 
-Evaluate the Work Arrangement experiment against representative local postings and decide what product slice should follow. In particular, do not assume that gate configuration, persisted facts, or semantic verification comes next until the extractor's usefulness and failure modes have been reviewed.
+Decide the next separately approved URL-intake slice. Source extraction, review UI, and provenance persistence remain unimplemented and must not be inferred from the guarded-fetch primitive.
 
 ## Accepted Next Architecture, Not Yet Implemented
 
-URL-first intake will coexist with manual paste. Its accepted boundary is guarded public-URL acquisition, structured or generic extraction, a transient user-reviewable draft, and explicit Job creation using the exact approved text. Implementation planning, schema details, security limits, dependency approval, and code remain future work.
+URL-first intake will coexist with manual paste. Beyond the implemented guarded-fetch primitive, its accepted boundary includes structured or generic extraction, a transient user-reviewable draft, and explicit Job creation using the exact approved text. Those later stages remain future work.
 
 ## Explicitly Not Implementing Yet
 
 - Semantic or AI analysis and local LLM integration.
 - Gate configuration/evaluation and Screened Out navigation.
 - Persisted extracted facts and generalized gate infrastructure.
-- URL fetching.
+- URL intake UI, source extraction, and persistence integration.
 - User accounts, authentication, or hosted multi-user architecture.
 - Cross-job analytics.
 - Embeddings or vector search.
@@ -45,5 +46,4 @@ Final Work Arrangement rules remain experimental. General gate design, determini
 ## Repository State
 
 - Branch: `main`.
-- Working tree: clean after the Work Arrangement experiment is committed.
-- Local `main` and `origin/main`: synchronized after the implementation commit is pushed.
+- Working tree: contains the approved guarded-fetch implementation and documentation changes pending review; no commit or push has been made for this slice.

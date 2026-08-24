@@ -5,7 +5,7 @@ defmodule JobMarketAnalyzer.JobMarket do
 
   import Ecto.Query, warn: false
 
-  alias JobMarketAnalyzer.JobMarket.{Job, WorkArrangement}
+  alias JobMarketAnalyzer.JobMarket.{Job, SourceAcquisition.GuardedFetcher, WorkArrangement}
   alias JobMarketAnalyzer.Repo
 
   @doc """
@@ -30,6 +30,13 @@ defmodule JobMarketAnalyzer.JobMarket do
   def extract_work_arrangement(%Job{raw_description: raw_description}) do
     WorkArrangement.extract(raw_description)
   end
+
+  @doc """
+  Fetches a public URL through the guarded source-acquisition boundary.
+
+  The bounded response is transient and does not create or update a job.
+  """
+  def fetch_public_source(url), do: GuardedFetcher.fetch(url)
 
   @doc """
   Creates a job from source data supplied by the user.
