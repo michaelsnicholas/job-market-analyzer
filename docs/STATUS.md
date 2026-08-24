@@ -9,6 +9,7 @@
 - The staged gate/analysis architecture is accepted: preserved source, deterministic facts, mutable preferences, gate evaluation, semantic verification, and full analysis have distinct responsibilities and lifecycles. Screened Out will be derived from current evaluations rather than stored as permanent job state.
 - The public repository is [michaelsnicholas/job-market-analyzer](https://github.com/michaelsnicholas/job-market-analyzer), with `main` as its default branch.
 - Deterministic Work Arrangement extraction is implemented as an experimental, versioned plain Elixir domain result recomputed from each saved raw description. It returns known explicitly offered modes or unknown, preserves exact byte-indexed evidence and rule identity, and appears on the job detail page.
+- URL-first intake architecture is accepted in ADR-002: guarded retrieval will produce a reviewable draft that converges with manual capture on user-approved canonical text, with lightweight Job provenance and human review before persistence.
 - No gate configuration/evaluation, screening, persisted extracted facts, semantic analysis, content hashing, duplicate detection, or URL fetching has been implemented.
 
 ## Latest Completed Slice
@@ -19,9 +20,9 @@ The deterministic Work Arrangement experiment identifies explicit fully remote, 
 
 Evaluate the Work Arrangement experiment against representative local postings and decide what product slice should follow. In particular, do not assume that gate configuration, persisted facts, or semantic verification comes next until the extractor's usefulness and failure modes have been reviewed.
 
-## Future Possibility Already Identified
+## Accepted Next Architecture, Not Yet Implemented
 
-A later version may accept a source URL instead of pasted text, retrieve the job description from that page, and store the retrieved source text in `raw_description`. URL retrieval remains future scope and has not been designed or implemented.
+URL-first intake will coexist with manual paste. Its accepted boundary is guarded public-URL acquisition, structured or generic extraction, a transient user-reviewable draft, and explicit Job creation using the exact approved text. Implementation planning, schema details, security limits, dependency approval, and code remain future work.
 
 ## Explicitly Not Implementing Yet
 

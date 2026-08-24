@@ -102,21 +102,44 @@ Company and role must not be required merely because they are useful. A job must
 
 Users can hard-delete an accidentally captured job with confirmation. Editing and soft-delete/archive infrastructure are not part of the current implementation.
 
-### Possible future URL intake
+### Accepted URL-first intake architecture
 
-A later version may accept a source URL instead of manually pasted text, fetch and extract the description, and store the resulting source text in `raw_description`. URL fetching is not currently authorized.
+URL-first intake will coexist with manual source capture. Retrieval is a pre-persistence acquisition layer:
 
-Multiple future intake mechanisms should converge on the same durable source record. Downstream domain and analysis logic should not need to know whether source text was pasted or acquired from a URL.
+```text
+source URL
+→ guarded acquisition
+→ extraction
+→ reviewable intake draft
+→ user review or correction
+→ Job creation
+```
+
+Retrieval must never directly create a Job. It proposes available Company, Role, final URL, source text, acquisition details, and warnings for review. The user may correct Company, Role, and source text before saving. If retrieval fails or is inadequate, manual paste remains immediately available.
+
+The user may supply any public job-posting URL and is not expected to find a canonical employer or ATS source. V1 will prefer usable `JobPosting` structured data, fall back to conservative generic HTML extraction, and rely on human review as the final completeness boundary. Source-specific handling remains internal. Initial ATS-specific adapters, a generic adapter framework, canonical-source discovery, headless-browser rendering, authenticated scraping, and anti-bot circumvention are deferred.
+
+Manual and URL-derived intake converge on the same durable source record. Downstream deterministic and semantic analysis must not depend on how source text was acquired. See [ADR-002](adr/002-use-reviewed-url-acquisition-and-pin-outbound-destinations.md) for the decision and tradeoffs.
 
 ### Raw source preservation
 
-The original description is durable source evidence. Derived analysis must remain separate and must never silently overwrite or progressively decorate the source record.
+`raw_description` is the exact textual evidence approved by the user when the Job is saved. For manual intake it is the submitted text. For URL-derived intake it is the retrieved and extracted text after any user correction, so it is not necessarily a verbatim copy of the upstream webpage. Derived analysis must remain separate and must never silently overwrite or progressively decorate this source evidence.
 
 The accepted principle is:
 
 > Never silently overwrite the evidence on which an analysis was based.
 
 Raw descriptions have not been declared literally immutable forever. A future editing feature might create a source revision, invalidate analyses, supersede an earlier source, or require reanalysis. Exact editing and revision behavior is deferred until a real need exists. The first product slice may avoid editing and use delete/re-enter.
+
+V1 will not retain fetched raw HTML or full HTTP response bodies. It will preserve lightweight acquisition provenance directly on the Job: the user-supplied source URL, a distinct final URL after validated redirects, acquisition time and method, extraction version, and whether fetched text was modified before saving. Exact field names and types remain an implementation decision. Raw response history, arbitrary persisted warning prose, generic provenance documents, source revisions, and Company/Role suggestion provenance are not part of v1. A separate source-capture model remains deferred until multiple sources, recapture, comparison, history, or monitoring creates a concrete lifecycle need.
+
+### Guarded outbound acquisition
+
+URL retrieval introduces an SSRF and resource-safety boundary that must be present from its first implementation. Every outbound hop must validate the logical URL, resolve and classify all returned IPv4 and IPv6 destinations, reject any destination that violates public-address policy, select an approved public address, and connect to that exact address without a second uncontrolled DNS resolution. The original hostname is retained only for TLS certificate verification, SNI, and HTTP identity.
+
+V1 permits HTTPS on port 443 and HTTP on port 80, preferring HTTPS. Redirects must be bounded and repeat the complete URL, DNS, and address validation process. Retrieval must also enforce request and connection timeouts, bounded network and decompressed sizes, accepted content types, safe URL logging, and untrusted-content handling. It sends no browser credentials or cookies, fetches no subresources, executes no scripts, and never renders fetched HTML as active content.
+
+The existing Req/Finch/Mint stack will support an application-owned guarded acquisition policy. SafeURL and Paraxial are not adopted for this boundary. Exact address ranges, timeouts, byte limits, client configuration, extraction rules, tests, and approval of a future Floki dependency remain implementation concerns.
 
 ## Application architecture
 
@@ -353,9 +376,19 @@ Do not design or implement the following until separately approved:
 - automatic taxonomies or elaborate skill/technology ontologies;
 - model fine-tuning or agentic tool use;
 - high-volume scaling or audit/compliance systems;
-- URL scraping or fetching;
+- URL retrieval implementation, until separately authorized from the accepted architecture in ADR-002;
 - résumé matching;
 - cross-job recommendations.
+
+The following URL-acquisition capabilities also remain deferred:
+
+- exact provenance schema fields and types;
+- exact security timeout, redirect, and byte limits;
+- Floki dependency approval and installation;
+- dedicated ATS adapters or a generic adapter/plugin framework;
+- headless-browser rendering, authenticated scraping, and CAPTCHA or anti-bot circumvention;
+- canonical employer-source discovery;
+- source recapture, history, comparison, monitoring, and post-save source editing.
 
 The following gate and analysis details also remain provisional or deferred:
 
