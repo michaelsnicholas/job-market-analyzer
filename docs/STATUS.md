@@ -11,27 +11,28 @@
 - Deterministic Work Arrangement extraction is implemented as an experimental, versioned plain Elixir domain result recomputed from each saved raw description. It returns known explicitly offered modes or unknown, preserves exact byte-indexed evidence and rule identity, and appears on the job detail page.
 - URL-first intake architecture is accepted in ADR-002: guarded retrieval will produce a reviewable draft that converges with manual capture on user-approved canonical text, with lightweight Job provenance and human review before persistence.
 - The first URL-intake implementation slice provides a guarded, bounded public-source fetch primitive. It validates every URL/DNS/IP hop, pins each request to a selected public address, handles redirects itself, and returns transient response or stable error data.
-- Structured `JobPosting`/generic HTML extraction and transient reviewable Draft construction are implemented behind the guarded fetcher. Drafts retain source URLs and acquisition time, preserve the initial extracted text for later edit detection, and carry deterministic metadata suggestions, method/version information, and stable warnings without persistence.
-- No URL intake UI, Job creation from fetched sources, or provenance persistence integration has been implemented. No gate configuration/evaluation, screening, persisted extracted facts, semantic analysis, content hashing, or duplicate detection exists.
+- Structured `JobPosting`, generic HTML, or plain-text extraction and transient reviewable Draft construction are implemented behind the guarded fetcher. Drafts retain source URLs and acquisition time, preserve the initial extracted text for later edit detection, and carry deterministic metadata suggestions, method/version information, and stable warnings without persistence.
+- Job provenance persistence and separate manual/URL-acquired context creation contracts are implemented. Manual attributes cannot forge acquisition history; reviewed URL-derived Jobs take provenance from a trusted Draft and record exact source-text modification status.
+- No URL intake UI or browser wiring for reviewing and saving fetched sources has been implemented. The current UI remains the existing manual workflow. No gate configuration/evaluation, screening, persisted extracted facts, semantic analysis, content hashing, or duplicate detection exists.
 
 ## Latest Completed Slice
 
-The second URL-intake slice converts bounded fetch results into transient drafts. It prefers usable `JobPosting` JSON-LD, falls back to conservative generic HTML extraction, preserves readable structural text, and returns stable inadequate/ambiguous extraction failures rather than fabricating source. Nothing is persisted.
+The third URL-intake slice adds lightweight provenance fields to Job and trusted context contracts for manual and acquired creation. Reviewed URL-derived source can now be persisted without trusting browser-supplied provenance; no user-facing URL workflow exists yet.
 
 ## Next Intended Slice
 
-Run real-source QA through IEx/manual calls, then decide the next separately approved URL-intake slice. Review UI, Job creation, and provenance persistence remain unimplemented.
+Decide the next separately approved URL-intake slice. The likely next boundary is the user-facing review/save workflow, but its interaction design and implementation remain unapproved.
 
 ## Accepted Next Architecture, Not Yet Implemented
 
-URL-first intake will coexist with manual paste. Guarded acquisition, structured/generic extraction, and transient draft construction are implemented. A user-reviewable UI and explicit Job creation using the exact approved text remain future work.
+URL-first intake will coexist with manual paste. Guarded acquisition, structured/generic extraction, transient draft construction, and trusted persistence of the exact user-approved text with acquisition provenance are implemented. A user-reviewable URL intake UI remains future work.
 
 ## Explicitly Not Implementing Yet
 
 - Semantic or AI analysis and local LLM integration.
 - Gate configuration/evaluation and Screened Out navigation.
 - Persisted extracted facts and generalized gate infrastructure.
-- URL intake UI, Job creation from drafts, and provenance persistence integration.
+- URL intake review/save UI and browser wiring.
 - User accounts, authentication, or hosted multi-user architecture.
 - Cross-job analytics.
 - Embeddings or vector search.
@@ -47,4 +48,4 @@ Final Work Arrangement rules remain experimental. General gate design, determini
 ## Repository State
 
 - Branch: `main`.
-- Working tree: contains the approved Slice 2 extraction implementation and documentation changes pending review; no commit or push has been made for this slice.
+- Working tree: contains the approved Slice 3 provenance persistence implementation and documentation changes pending review; no commit or push has been made for this slice.

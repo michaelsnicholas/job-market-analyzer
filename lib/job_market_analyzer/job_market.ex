@@ -7,6 +7,7 @@ defmodule JobMarketAnalyzer.JobMarket do
 
   alias JobMarketAnalyzer.JobMarket.{
     Job,
+    SourceAcquisition.Draft,
     SourceAcquisition.Extractor,
     SourceAcquisition.GuardedFetcher,
     WorkArrangement
@@ -61,9 +62,36 @@ defmodule JobMarketAnalyzer.JobMarket do
   @doc """
   Creates a job from source data supplied by the user.
   """
-  def create_job(attrs \\ %{}) do
+  def create_job(attrs \\ %{}), do: create_manual_job(attrs)
+
+  @doc """
+  Creates a manually supplied job without acquisition provenance.
+
+  A source URL remains optional and does not imply that the application fetched it.
+  """
+  def create_manual_job(attrs \\ %{}) do
     %Job{}
     |> Job.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Creates a job from user-approved values and a trusted transient acquisition draft.
+  """
+  def create_acquired_job(attrs, %Draft{} = draft) do
+    approved_raw_description = attr_value(attrs, :raw_description)
+
+    provenance = %{
+      source_url: draft.source_url,
+      final_source_url: draft.final_source_url,
+      source_acquired_at: draft.source_acquired_at,
+      source_acquisition_method: draft.source_acquisition_method,
+      source_extractor_version: draft.source_extractor_version,
+      source_text_modified: approved_raw_description != draft.original_extracted_text
+    }
+
+    %Job{}
+    |> Job.acquired_changeset(attrs, provenance)
     |> Repo.insert()
   end
 
@@ -77,5 +105,9 @@ defmodule JobMarketAnalyzer.JobMarket do
   """
   def change_job(%Job{} = job, attrs \\ %{}) do
     Job.changeset(job, attrs)
+  end
+
+  defp attr_value(attrs, key) when is_map(attrs) do
+    Map.get(attrs, key, Map.get(attrs, Atom.to_string(key)))
   end
 end
