@@ -20,7 +20,7 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.ExtractorTest do
                 company: %Suggestion{value: "Example Company", source: :job_posting_json_ld},
                 role: %Suggestion{value: "Director of Programs", source: :job_posting_json_ld},
                 source_acquisition_method: :job_posting_json_ld,
-                source_extractor_version: 1
+                source_extractor_version: 2
               } = draft} = extract(html)
 
       assert draft.raw_description == draft.original_extracted_text
@@ -148,6 +148,132 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.ExtractorTest do
                  extract(body, "application/ld+json")
       end
     end
+
+    test "reconciles a uniquely anchored partial description with coherent DOM continuation" do
+      partial =
+        "Build products that help people communicate, create, and connect across the world."
+
+      posting = job_posting(%{"description" => partial, "title" => "Product Director"})
+
+      html = """
+      <html><body>
+        <header>Careers navigation and unrelated company promotion</header>
+        <section class="opaque-layout-class">
+          <p>#{partial}</p>
+          <div aria-hidden="true">decorative spacer</div>
+          <h2>Responsibilities</h2>
+          <ul>
+            <li>Set product strategy across several customer experiences.</li>
+            <li>Lead teams through discovery, delivery, and iteration.</li>
+          </ul>
+          <h2>Qualifications</h2>
+          <p>Extensive experience building consumer products with engineering and design teams.</p>
+          <h2>Compensation</h2>
+          <p>Competitive salary, bonus, equity, and comprehensive benefits.</p>
+          <form>Application questions and private candidate information</form>
+          <div>Apply</div>
+        </section>
+        <aside>Related jobs and unrelated editorial content</aside>
+        <script type="application/ld+json">#{Jason.encode!(posting)}</script>
+      </body></html>
+      """
+
+      assert {:ok,
+              %Draft{
+                company: %Suggestion{value: "Example Company", source: :job_posting_json_ld},
+                role: %Suggestion{value: "Product Director", source: :job_posting_json_ld},
+                source_acquisition_method: :job_posting_json_ld_reconciled,
+                raw_description: text
+              }} = extract(html)
+
+      assert String.starts_with?(text, partial)
+      assert text =~ "Responsibilities"
+      assert text =~ "- Set product strategy"
+      assert text =~ "Qualifications"
+      assert text =~ "Extensive experience"
+      assert text =~ "Compensation"
+      refute text =~ "Careers navigation"
+      refute text =~ "Application questions"
+      refute text =~ "Apply"
+      refute text =~ "Related jobs"
+    end
+
+    test "keeps complete structured descriptions on the ordinary JSON-LD path" do
+      description =
+        "Lead product strategy across engineering and design while delivering reliable customer experiences."
+
+      html = """
+      <html><body><article><p>#{description}</p></article>
+      <script type="application/ld+json">#{Jason.encode!(job_posting(%{"description" => description}))}</script>
+      </body></html>
+      """
+
+      assert {:ok,
+              %Draft{
+                raw_description: ^description,
+                source_acquisition_method: :job_posting_json_ld
+              }} = extract(html)
+    end
+
+    test "does not reconcile nonunique DOM anchors" do
+      partial = "Lead a large product area with engineering, design, and research partners."
+      posting = job_posting(%{"description" => partial})
+
+      repeated_region = """
+      <section><p>#{partial}</p><h2>Responsibilities</h2>
+      <ul><li>Set strategy for a substantial portfolio of customer products.</li></ul>
+      <h2>Qualifications</h2><p>Extensive experience leading cross-functional teams.</p></section>
+      """
+
+      html = """
+      <html><body>#{repeated_region}#{repeated_region}
+      <script type="application/ld+json">#{Jason.encode!(posting)}</script></body></html>
+      """
+
+      assert {:ok,
+              %Draft{
+                raw_description: ^partial,
+                source_acquisition_method: :job_posting_json_ld
+              }} = extract(html)
+    end
+
+    test "does not reconcile through a substantial unrelated sibling boundary" do
+      partial = "Lead product development with engineering, design, and customer research teams."
+      posting = job_posting(%{"description" => partial})
+
+      html = """
+      <html><body><section>
+        <p>#{partial}</p>
+        <aside><h2>Latest company news</h2><p>This unrelated editorial feature contains substantial content.</p></aside>
+        <h2>Responsibilities</h2>
+        <ul><li>Set strategy and guide delivery across several product teams.</li></ul>
+        <h2>Qualifications</h2><p>Extensive relevant leadership experience.</p>
+      </section><script type="application/ld+json">#{Jason.encode!(posting)}</script></body></html>
+      """
+
+      assert {:ok,
+              %Draft{
+                raw_description: ^partial,
+                source_acquisition_method: :job_posting_json_ld
+              }} = extract(html)
+    end
+
+    test "preserves structured text when adjacent DOM content is insufficient evidence" do
+      partial = "Lead product development with engineering, design, and customer research teams."
+      posting = job_posting(%{"description" => partial})
+
+      html = """
+      <html><body><section><p>#{partial}</p>
+      <p>Read more about the company and its products.</p></section>
+      <script type="application/ld+json">#{Jason.encode!(posting)}</script></body></html>
+      """
+
+      assert {:ok,
+              %Draft{
+                raw_description: ^partial,
+                source_acquisition_method: :job_posting_json_ld
+              }} = extract(html)
+    end
   end
 
   describe "generic HTML" do
@@ -208,6 +334,97 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.ExtractorTest do
       assert {:ok, %Draft{raw_description: text}} = extract(html)
       assert text =~ "Coordinate research programs"
       refute text =~ "Recommended roles"
+    end
+
+    test "prefers a job__description root and confirms Greenhouse-shaped title metadata" do
+      html = """
+      <html>
+        <head>
+          <title>Job Application for Head of Product (Mail) at Proton</title>
+          <meta property="og:title" content="Head of Product (Mail)">
+        </head>
+        <body>
+          <main class="main font-secondary job-post">
+            <a href="/jobs">Back to jobs</a>
+            <div class="job__header">
+              <h1>Head of Product (Mail)</h1>
+              <div class="job__location">London; Paris; Geneva</div>
+              <a href="#application">Apply</a>
+            </div>
+            <div class="job__description body">
+              <h2>Join the product team</h2>
+              <p>Lead the strategy and roadmap for a privacy-focused communications product used by people around the world.</p>
+              <h2>What you will do</h2>
+              <ul><li>Set a clear product vision.</li><li>Coach and support product managers.</li></ul>
+              <form>Application fields must not become source text.</form>
+              <script>untrustedPageState()</script>
+            </div>
+          </main>
+        </body>
+      </html>
+      """
+
+      assert {:ok,
+              %Draft{
+                company: %Suggestion{value: "Proton", source: :page_metadata},
+                role: %Suggestion{value: "Head of Product (Mail)", source: :page_metadata},
+                raw_description: text,
+                source_acquisition_method: :generic_html,
+                warnings: [:generic_extraction]
+              }} = extract(html)
+
+      assert String.starts_with?(text, "Join the product team")
+      assert text =~ "Set a clear product vision."
+
+      for excluded <- [
+            "Back to jobs",
+            "London; Paris; Geneva",
+            "Apply",
+            "Application fields",
+            "untrustedPageState"
+          ] do
+        refute text =~ excluded
+      end
+    end
+
+    test "does not trust a Job Application title when the unique h1 disagrees" do
+      html = """
+      <html>
+        <head><title>Job Application for Product Director at Example Company</title></head>
+        <body><main>
+          <h1>Engineering Director</h1>
+          <div class="job__description">
+            <p>Lead a substantial engineering organization and its long-term technical strategy.</p>
+          </div>
+        </main></body>
+      </html>
+      """
+
+      assert {:ok,
+              %Draft{
+                company: nil,
+                role: nil,
+                source_acquisition_method: :generic_html,
+                warnings: warnings
+              }} = extract(html)
+
+      assert :metadata_conflict in warnings
+    end
+
+    test "does not trust a Job Application title without a unique h1" do
+      html = """
+      <html>
+        <head><title>Job Application for Product Director at Example Company</title></head>
+        <body><main>
+          <div class="job__description">
+            <p>Lead a substantial product organization and its long-term customer strategy.</p>
+          </div>
+        </main></body>
+      </html>
+      """
+
+      assert {:ok, %Draft{company: nil, role: nil, warnings: warnings}} = extract(html)
+      assert :metadata_conflict in warnings
     end
 
     test "marks body fallback as possible boilerplate" do
@@ -373,7 +590,7 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.ExtractorTest do
       assert {:ok, %Draft{company: nil, role: nil, warnings: warnings}} = extract(html)
       assert warnings == Enum.uniq(warnings)
       assert warnings == [:generic_extraction, :short_source]
-      assert Extractor.version() == 1
+      assert Extractor.version() == 2
     end
 
     test "accepts useful plain text without inventing metadata" do

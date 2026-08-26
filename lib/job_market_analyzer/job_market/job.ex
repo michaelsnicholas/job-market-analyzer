@@ -13,6 +13,7 @@ defmodule JobMarketAnalyzer.JobMarket.Job do
       values: [
         manual: "manual",
         job_posting_json_ld: "job_posting_json_ld",
+        job_posting_json_ld_reconciled: "job_posting_json_ld_reconciled",
         generic_html: "generic_html",
         plain_text: "plain_text"
       ],
@@ -59,6 +60,7 @@ defmodule JobMarketAnalyzer.JobMarket.Job do
   defp validate_acquired_method(changeset) do
     if get_field(changeset, :source_acquisition_method) in [
          :job_posting_json_ld,
+         :job_posting_json_ld_reconciled,
          :generic_html,
          :plain_text
        ] do

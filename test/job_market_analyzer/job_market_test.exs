@@ -134,7 +134,12 @@ defmodule JobMarketAnalyzer.JobMarketTest do
     end
 
     test "creates acquired jobs from every supported trusted Draft method" do
-      for method <- [:job_posting_json_ld, :generic_html, :plain_text] do
+      for method <- [
+            :job_posting_json_ld,
+            :job_posting_json_ld_reconciled,
+            :generic_html,
+            :plain_text
+          ] do
         draft = acquired_draft(method)
 
         attrs = %{

@@ -9,11 +9,13 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.Extractor do
     Suggestion
   }
 
-  @extractor_version 1
+  @extractor_version 2
   @minimum_useful_bytes 40
   @short_source_bytes 200
+  @minimum_continuation_bytes 200
   @html_types ["text/html", "application/xhtml+xml"]
   @json_types ["application/json", "application/ld+json"]
+  @preferred_generic_roots ["[class~='job__description']"]
   @generic_roots [
     "main",
     "article",
@@ -74,6 +76,7 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.Extractor do
     ~r/\b(?:compensation|salary range|benefits)\b/iu,
     ~r/\bequal opportunity employer\b/iu
   ]
+  @job_section_heading ~r/\b(?:responsibilit(?:y|ies)|qualifications?|requirements?|what you(?:'|’)ll do|about you|compensation|benefits?|dut(?:y|ies)|skills?|experience|the role)\b/iu
 
   @spec version() :: pos_integer()
   def version, do: @extractor_version
@@ -112,7 +115,7 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.Extractor do
       |> select_job_posting(page_metadata)
       |> case do
         {:ok, posting, warnings} ->
-          build_structured_draft(result, posting, warnings)
+          build_structured_draft(result, posting, warnings, document)
 
         :none ->
           build_generic_draft(result, document, page_metadata)
@@ -223,22 +226,22 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.Extractor do
   defp title_match?(title, metadata_title),
     do: title == metadata_title or String.contains?(metadata_title, title)
 
-  defp build_structured_draft(result, posting, warnings) do
+  defp build_structured_draft(result, posting, warnings, document \\ nil) do
     with {:ok, fragment} <- Floki.parse_fragment(posting["description"]),
-         text when is_binary(text) <- HTMLText.extract(fragment),
-         true <- useful?(text) do
+         structured_text when is_binary(structured_text) <- HTMLText.extract(fragment),
+         true <- useful?(structured_text) do
       company = suggestion(get_in(posting, ["hiringOrganization", "name"]), :job_posting_json_ld)
       role = suggestion(posting["title"], :job_posting_json_ld)
+      {text, method} = reconcile_structured_description(document, structured_text)
 
-      {:ok,
-       draft(result, text, :job_posting_json_ld, company, role, warnings ++ short_warning(text))}
+      {:ok, draft(result, text, method, company, role, warnings ++ short_warning(text))}
     else
       _other -> inadequate()
     end
   end
 
   defp build_generic_draft(result, document, metadata) do
-    cleaned = Floki.filter_out(document, Enum.join(@noise_selectors, ","))
+    cleaned = clean_document(document)
     {root, body_fallback?} = select_generic_root(cleaned)
     text = HTMLText.extract(root)
 
@@ -257,18 +260,173 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.Extractor do
     end
   end
 
+  defp reconcile_structured_description(nil, structured_text),
+    do: {structured_text, :job_posting_json_ld}
+
+  defp reconcile_structured_description(document, structured_text) do
+    case anchor_paths(clean_document(document), structured_text) do
+      [path] ->
+        case reconciled_region(path) do
+          nil -> {structured_text, :job_posting_json_ld}
+          text -> {text, :job_posting_json_ld_reconciled}
+        end
+
+      _other ->
+        {structured_text, :job_posting_json_ld}
+    end
+  end
+
+  defp anchor_paths(nodes, target) when is_list(nodes) do
+    nodes
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {node, index} -> anchor_paths(node, target, [{node, index}]) end)
+  end
+
+  defp anchor_paths({_, _, children} = node, target, path) do
+    descendant_paths =
+      children
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {child, index} ->
+        anchor_paths(child, target, path ++ [{child, index}])
+      end)
+
+    cond do
+      descendant_paths != [] -> descendant_paths
+      HTMLText.extract(node) == target -> [path]
+      true -> []
+    end
+  end
+
+  defp anchor_paths(_node, _target, _path), do: []
+
+  defp reconciled_region(path) do
+    path
+    |> Enum.with_index()
+    |> Enum.reverse()
+    |> Enum.find_value(fn
+      {{segment, segment_index}, path_index} when path_index > 0 ->
+        {parent, _parent_index} = Enum.at(path, path_index - 1)
+        reconcile_with_following_siblings(segment, segment_index, parent)
+
+      _root ->
+        nil
+    end)
+  end
+
+  defp reconcile_with_following_siblings(segment, segment_index, {_, _, children}) do
+    {continuation, stats} =
+      children
+      |> Enum.drop(segment_index + 1)
+      |> Enum.reduce_while({[], continuation_stats()}, fn node, {nodes, stats} ->
+        case continuation_node(node) do
+          :empty ->
+            {:cont, {[node | nodes], stats}}
+
+          {:content, kind, text} ->
+            {:cont, {[node | nodes], update_continuation_stats(stats, kind, text)}}
+
+          :boundary ->
+            {:halt, {nodes, stats}}
+        end
+      end)
+
+    if coherent_continuation?(stats) do
+      continuation = continuation |> Enum.reverse() |> trim_trailing_empty()
+      HTMLText.extract([segment | continuation])
+    end
+  end
+
+  defp continuation_stats do
+    %{bytes: 0, blocks: 0, headings: 0, recognized_headings: 0, supporting_blocks: 0}
+  end
+
+  defp continuation_node(text) when is_binary(text) do
+    if String.trim(text) == "", do: :empty, else: :boundary
+  end
+
+  defp continuation_node({tag, _attrs, _children} = node)
+       when tag in ["h2", "h3", "h4", "h5", "h6"] do
+    case HTMLText.extract(node) do
+      "" -> :empty
+      text -> {:content, :heading, text}
+    end
+  end
+
+  defp continuation_node({"p", _attrs, _children} = node) do
+    case HTMLText.extract(node) do
+      text when byte_size(text) >= 20 -> {:content, :supporting, text}
+      "" -> :empty
+      _short -> :boundary
+    end
+  end
+
+  defp continuation_node({tag, _attrs, _children} = node) when tag in ["ul", "ol"] do
+    text = HTMLText.extract(node)
+
+    if byte_size(text) >= 40 and Floki.find(node, "li") != [] do
+      {:content, :supporting, text}
+    else
+      :boundary
+    end
+  end
+
+  defp continuation_node(node) do
+    if HTMLText.extract(node) == "", do: :empty, else: :boundary
+  end
+
+  defp update_continuation_stats(stats, :heading, text) do
+    stats
+    |> Map.update!(:bytes, &(&1 + byte_size(text)))
+    |> Map.update!(:blocks, &(&1 + 1))
+    |> Map.update!(:headings, &(&1 + 1))
+    |> Map.update!(
+      :recognized_headings,
+      &(&1 + if(Regex.match?(@job_section_heading, text), do: 1, else: 0))
+    )
+  end
+
+  defp update_continuation_stats(stats, :supporting, text) do
+    stats
+    |> Map.update!(:bytes, &(&1 + byte_size(text)))
+    |> Map.update!(:blocks, &(&1 + 1))
+    |> Map.update!(:supporting_blocks, &(&1 + 1))
+  end
+
+  defp coherent_continuation?(stats) do
+    stats.bytes >= @minimum_continuation_bytes and stats.blocks >= 3 and
+      stats.supporting_blocks >= 1 and
+      (stats.recognized_headings >= 1 or
+         (stats.headings >= 2 and stats.supporting_blocks >= 2 and stats.bytes >= 500))
+  end
+
+  defp trim_trailing_empty(nodes) do
+    nodes
+    |> Enum.reverse()
+    |> Enum.drop_while(&(HTMLText.extract(&1) == ""))
+    |> Enum.reverse()
+  end
+
+  defp clean_document(document),
+    do: Floki.filter_out(document, Enum.join(@noise_selectors, ","))
+
   defp select_generic_root(document) do
+    candidates = generic_candidates(document, @preferred_generic_roots)
+
     candidates =
-      @generic_roots
-      |> Enum.flat_map(&Floki.find(document, &1))
-      |> Enum.uniq()
-      |> Enum.map(&{&1, generic_score(&1)})
-      |> Enum.filter(fn {_node, score} -> score >= @minimum_useful_bytes end)
+      if candidates == [], do: generic_candidates(document, @generic_roots), else: candidates
 
     case Enum.max_by(candidates, &elem(&1, 1), fn -> nil end) do
       {node, _score} -> {node, false}
       nil -> {Floki.find(document, "body"), true}
     end
+  end
+
+  defp generic_candidates(document, selectors) do
+    selectors
+    |> Enum.flat_map(&Floki.find(document, &1))
+    |> Enum.uniq()
+    |> Enum.map(&{&1, generic_score(&1)})
+    |> Enum.filter(fn {_node, score} -> score >= @minimum_useful_bytes end)
   end
 
   defp generic_score(node) do
@@ -286,6 +444,49 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.Extractor do
   end
 
   defp metadata_suggestions(metadata) do
+    case confirmed_job_application_title(metadata) do
+      {role, company} ->
+        {suggestion(company, :page_metadata), suggestion(role, :page_metadata), []}
+
+      nil when not is_nil(metadata.title) ->
+        if job_application_title?(metadata.title) do
+          {nil, nil, [:metadata_conflict]}
+        else
+          metadata_suggestions_from_titles(metadata)
+        end
+
+      nil ->
+        metadata_suggestions_from_titles(metadata)
+    end
+  end
+
+  defp confirmed_job_application_title(%{title: title, h1: h1, og_title: og_title})
+       when is_binary(title) and is_binary(h1) do
+    with {role, company} <- parse_job_application_title(title),
+         true <- normalize_comparison(role) == normalize_comparison(h1),
+         true <- is_nil(og_title) or normalize_comparison(og_title) == normalize_comparison(role) do
+      {String.trim(role), String.trim(company)}
+    else
+      _other -> nil
+    end
+  end
+
+  defp confirmed_job_application_title(_metadata), do: nil
+
+  defp job_application_title?(title), do: not is_nil(parse_job_application_title(title))
+
+  defp parse_job_application_title(title) do
+    case Regex.run(
+           ~r/^Job Application for (.+) at (.+)$/iu,
+           title,
+           capture: :all_but_first
+         ) do
+      [role, company] -> {role, company}
+      _other -> nil
+    end
+  end
+
+  defp metadata_suggestions_from_titles(metadata) do
     parsed =
       [metadata[:og_title], metadata[:title]]
       |> Enum.reject(&is_nil/1)

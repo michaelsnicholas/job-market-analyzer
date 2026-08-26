@@ -19,7 +19,11 @@ defmodule JobMarketAnalyzer.JobMarket.SourceAcquisition.Draft do
   ]
   defstruct @enforce_keys
 
-  @type method :: :job_posting_json_ld | :generic_html | :plain_text
+  @type method ::
+          :job_posting_json_ld
+          | :job_posting_json_ld_reconciled
+          | :generic_html
+          | :plain_text
   @type warning ::
           :generic_extraction
           | :multiple_job_postings
