@@ -4,6 +4,7 @@ defmodule JobMarketAnalyzer.JobMarketTest do
   alias JobMarketAnalyzer.JobMarket
   alias JobMarketAnalyzer.JobMarket.Job
   alias JobMarketAnalyzer.JobMarket.SourceAcquisition.Draft
+  alias JobMarketAnalyzer.JobMarket.WorkArrangementPreference
   alias JobMarketAnalyzer.Repo
 
   import JobMarketAnalyzer.JobMarketFixtures
@@ -266,6 +267,152 @@ defmodule JobMarketAnalyzer.JobMarketTest do
     test "passes a guarded fetch error through source-draft preparation" do
       assert {:error, %{reason: :unsupported_scheme, stage: :url_validation}} =
                JobMarket.prepare_source_draft("file:///etc/passwd")
+    end
+  end
+
+  describe "Work Arrangement preferences and evaluation" do
+    test "a missing preference record returns the disabled singleton default" do
+      assert %WorkArrangementPreference{
+               id: 1,
+               enabled: false,
+               accept_fully_remote: false,
+               accept_hybrid: false,
+               accept_on_site: false
+             } = JobMarket.get_work_arrangement_preference()
+
+      assert Repo.aggregate(WorkArrangementPreference, :count) == 0
+    end
+
+    test "saves disabled and enabled preferences with canonical accepted modes" do
+      assert {:ok, disabled} =
+               JobMarket.save_work_arrangement_preference(%{
+                 enabled: false,
+                 accept_fully_remote: true,
+                 accept_hybrid: false,
+                 accept_on_site: true
+               })
+
+      assert disabled.id == 1
+
+      assert WorkArrangementPreference.accepted_arrangements(disabled) == [
+               :fully_remote,
+               :on_site
+             ]
+
+      assert {:ok, enabled} =
+               JobMarket.save_work_arrangement_preference(%{
+                 enabled: true,
+                 accept_fully_remote: false,
+                 accept_hybrid: true,
+                 accept_on_site: true
+               })
+
+      assert enabled.id == disabled.id
+      assert enabled.enabled
+      assert WorkArrangementPreference.accepted_arrangements(enabled) == [:hybrid, :on_site]
+      assert Repo.aggregate(WorkArrangementPreference, :count) == 1
+    end
+
+    test "allows disclosure to be enabled without activating screening" do
+      assert {:ok, preference} =
+               JobMarket.save_work_arrangement_preference(%{
+                 enabled: true,
+                 accept_fully_remote: false,
+                 accept_hybrid: false,
+                 accept_on_site: false
+               })
+
+      assert preference.enabled
+      assert WorkArrangementPreference.accepted_arrangements(preference) == []
+      assert Repo.aggregate(WorkArrangementPreference, :count) == 1
+    end
+
+    test "preserves subordinate selections when disabling the gate" do
+      assert {:ok, _preference} =
+               JobMarket.save_work_arrangement_preference(%{
+                 enabled: true,
+                 accept_fully_remote: true,
+                 accept_hybrid: true,
+                 accept_on_site: false
+               })
+
+      assert {:ok, disabled} =
+               JobMarket.save_work_arrangement_preference(%{enabled: false})
+
+      assert disabled.enabled == false
+      assert disabled.accept_fully_remote
+      assert disabled.accept_hybrid
+      refute disabled.accept_on_site
+    end
+
+    test "evaluates current extracted facts against the saved preference" do
+      remote_job = job_fixture(%{raw_description: "This role is fully remote."})
+      onsite_job = job_fixture(%{raw_description: "Location Type: On-site"})
+      unknown_job = job_fixture(%{raw_description: "Location: Central City."})
+
+      assert %{status: :not_applicable} = JobMarket.evaluate_work_arrangement(remote_job)
+
+      assert {:ok, _preference} =
+               JobMarket.save_work_arrangement_preference(%{enabled: true})
+
+      assert %{status: :not_applicable} = JobMarket.evaluate_work_arrangement(remote_job)
+
+      assert {:ok, _preference} =
+               JobMarket.save_work_arrangement_preference(%{
+                 enabled: true,
+                 accept_fully_remote: true
+               })
+
+      assert %{status: :pass} = JobMarket.evaluate_work_arrangement(remote_job)
+      assert %{status: :fail} = JobMarket.evaluate_work_arrangement(onsite_job)
+      assert %{status: :unknown} = JobMarket.evaluate_work_arrangement(unknown_job)
+    end
+
+    test "Saved jobs projection excludes only failures and responds to preference changes" do
+      remote_job = job_fixture(%{raw_description: "This role is fully remote."})
+      onsite_job = job_fixture(%{raw_description: "Location Type: On-site"})
+      unknown_job = job_fixture(%{raw_description: "Location: Central City."})
+
+      preference = JobMarket.get_work_arrangement_preference()
+
+      assert JobMarket.list_jobs_for_work_arrangement(preference) == [
+               unknown_job,
+               onsite_job,
+               remote_job
+             ]
+
+      assert {:ok, remote_preference} =
+               JobMarket.save_work_arrangement_preference(%{
+                 enabled: true,
+                 accept_fully_remote: true
+               })
+
+      assert JobMarket.list_jobs_for_work_arrangement(remote_preference) == [
+               unknown_job,
+               remote_job
+             ]
+
+      assert {:ok, onsite_preference} =
+               JobMarket.save_work_arrangement_preference(%{
+                 accept_fully_remote: false,
+                 accept_on_site: true
+               })
+
+      assert JobMarket.list_jobs_for_work_arrangement(onsite_preference) == [
+               unknown_job,
+               onsite_job
+             ]
+
+      assert {:ok, inactive_preference} =
+               JobMarket.save_work_arrangement_preference(%{accept_on_site: false})
+
+      assert JobMarket.list_jobs_for_work_arrangement(inactive_preference) == [
+               unknown_job,
+               onsite_job,
+               remote_job
+             ]
+
+      assert Repo.aggregate(Job, :count) == 3
     end
   end
 

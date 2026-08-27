@@ -40,7 +40,7 @@ Keep `STATUS.md` concise and update it after every meaningful completed slice. K
 
 The application name and the future domain context name are intentionally distinct. `JobMarket` describes the domain as a growing body of job-market evidence rather than a generic job board.
 
-The durable corpus foundation is implemented. It contains the `JobMarket` context, a `Job` source schema, SQLite migrations, LiveView intake/list and detail screens, and confirmed hard deletion. A first deterministic Work Arrangement experiment is also implemented and displayed on the detail screen. URL intake has guarded public-source fetching, structured/generic/plain-text extraction into transient reviewable drafts, a trusted context contract for persisting reviewed drafts with provenance, and a LiveView review/save workflow. The application does not contain gate evaluation, persisted extracted facts, semantic analysis, AI integration, content hashing, or duplicate detection.
+The durable corpus foundation is implemented. It contains the `JobMarket` context, a `Job` source schema, SQLite migrations, LiveView intake/list and detail screens, and confirmed hard deletion. A deterministic Work Arrangement extraction and gate-evaluation experiment is implemented with one durable local preference and derived evaluation displayed on the detail screen. URL intake has guarded public-source fetching, structured/generic/plain-text extraction into transient reviewable drafts, a trusted context contract for persisting reviewed drafts with provenance, and a LiveView review/save workflow. The application does not contain generalized gate infrastructure, persisted extracted facts or evaluations, semantic analysis, AI integration, content hashing, or duplicate detection.
 
 ## Product purpose
 
@@ -188,7 +188,7 @@ raw job source
 → full analysis
 ```
 
-Extracted facts describe the posting, not the user's preferences, and useful facts may be extracted whether or not a corresponding gate is enabled. Gate configuration represents mutable user preferences. Gate evaluation compares facts with current preferences using the conceptual states `PASS`, `FAIL`, `UNKNOWN`, and `NOT_APPLICABLE`, where `NOT_APPLICABLE` means the gate is disabled.
+Extracted facts describe the posting, not the user's preferences, and useful facts may be extracted whether or not a corresponding gate is active. Gate configuration represents mutable user preferences. Deterministic gate evaluation does not guess: `PASS` means explicit evidence establishes a fact matching an accepted mode, `FAIL` means explicit evidence establishes a fact matching none of the accepted modes, `UNKNOWN` means explicit evidence is insufficient to establish the fact reliably, and `NOT_APPLICABLE` means no accepted modes are currently active. `UNKNOWN` is a routing state intended for future semantic verification, not an invitation to make deterministic extraction increasingly inferential.
 
 Deterministic extraction must be conservative and inspectable: assert a fact only from sufficiently explicit evidence, otherwise return unknown. It must not manufacture pseudo-confidence scores. Ambiguous or contradictory evidence should normally remain unknown unless a narrow, transparent, tested precedence rule resolves it. All enabled deterministic gates should eventually run so their complete results can be inspected rather than stopping evaluation at the first failure.
 
@@ -316,7 +316,7 @@ It includes:
 
 This is a durable corpus foundation, not the semantic-analysis product. Move through it relatively quickly rather than spending days polishing generic CRUD before testing the core analysis idea.
 
-### Implemented experiment: deterministic Work Arrangement extraction
+### Implemented experiment: deterministic Work Arrangement extraction and evaluation
 
 The first pre-analysis experiment establishes one narrow path:
 
@@ -326,6 +326,8 @@ saved raw job description
 → known or unknown result
 → normalized explicitly available arrangement mode(s)
 → supporting evidence
+→ saved local Work Arrangement preference
+→ derived PASS / FAIL / UNKNOWN / NOT_APPLICABLE evaluation
 → display on the existing job detail view
 ```
 
@@ -335,7 +337,9 @@ The implementation uses a versioned plain Elixir domain result recomputed from `
 
 Narrow deterministic scope or precedence rules are acceptable when transparent and testable, such as explicit structured role metadata or explicit role-directed statements. General document-level semantic interpretation is outside deterministic v1. Contradictory evidence normally produces unknown unless a narrow tested rule safely resolves it.
 
-The experiment does not include persistence, migrations, gate settings or evaluation, Screened Out navigation, semantic verification, overrides, generalized gate infrastructure, or model/runtime integration. Its purpose is to test whether conservative deterministic Work Arrangement extraction is useful and reliable enough to justify further architecture. The next decision follows evaluation of its behavior on representative local postings rather than assuming which later stage should be implemented next.
+Work Arrangement preference is stored as one dedicated singleton SQLite record with a disclosure-visibility flag and explicit booleans for fully remote, hybrid, and on-site. A missing record behaves as hidden with no modes selected. The disclosure control only shows or hides the subordinate options; screening becomes applicable only when the control is open and at least one mode is selected. Opening it with no modes is valid and remains `NOT_APPLICABLE`. Hiding it preserves subordinate selections while making them inactive. Preference changes persist immediately without a separate save action. This is a focused local preference, not a generic settings or gate framework.
+
+The extracted fact and evaluation are recomputed rather than persisted. A known fact passes when at least one explicitly offered mode is accepted and fails when none is accepted. An unknown fact remains `UNKNOWN`; no active modes produces `NOT_APPLICABLE`. The Saved jobs list is a derived projection that hides only current deterministic failures while retaining `PASS`, `UNKNOWN`, and `NOT_APPLICABLE` jobs. Preference changes immediately recompute that projection; hidden jobs are not deleted, modified, archived, or permanently classified. The detail page displays the evaluation, fact, active accepted modes, and existing deterministic evidence. The experiment does not include a separate Screened Out view, semantic verification, overrides, additional gates, generalized gate infrastructure, or model/runtime integration.
 
 ### Later semantic analysis
 
@@ -401,8 +405,7 @@ The following gate and analysis details also remain provisional or deferred:
 - Salary screening and currency handling;
 - geographic eligibility and visa/work-authorization verification;
 - materialized workflow or Screened Out projections;
-- deterministic `UNKNOWN` behavior after screening exists but before semantic verification exists;
-- the meaning or validity of an enabled gate with no accepted values.
+- behavior that routes deterministic `UNKNOWN` results into an implemented semantic stage.
 
 Import/export is a plausible future bridge from local to hosted usage, but its format is deferred until the data schema stabilizes.
 
@@ -416,4 +419,4 @@ Never commit personal job data, credentials, tokens, private company information
 
 ## Current implementation boundary
 
-The current application includes the generated Phoenix foundation, the durable source corpus, the non-persisted deterministic Work Arrangement extraction/display experiment, guarded public-source fetching, transient structured/generic/plain-text source-draft construction, trusted context-level persistence of reviewed drafts with Job provenance, and the LiveView URL acquisition/review/save workflow alongside manual capture. The application has no gate configuration or evaluation, Screened Out projection, semantic verification, or full analysis. Do not expand these boundaries into deferred functionality without explicit approval.
+The current application includes the generated Phoenix foundation, the durable source corpus, the deterministic Work Arrangement extraction and derived gate-evaluation experiment with one dedicated durable local preference and FAIL-only Saved jobs filtering, guarded public-source fetching, transient structured/generic/plain-text source-draft construction, trusted context-level persistence of reviewed drafts with Job provenance, and the LiveView URL acquisition/review/save workflow alongside manual capture. The application has no generalized gate infrastructure, persisted facts or evaluations, separate Screened Out view, semantic verification, or full analysis. Do not expand these boundaries into deferred functionality without explicit approval.

@@ -7,11 +7,43 @@ defmodule JobMarketAnalyzerWeb.JobLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    preference = JobMarket.get_work_arrangement_preference()
+
     {:ok,
      socket
      |> assign(:page_title, "Saved jobs")
+     |> assign_work_arrangement_preference_form(
+       JobMarket.change_work_arrangement_preference(preference)
+     )
      |> reset_intake()
-     |> stream(:jobs, JobMarket.list_jobs())}
+     |> stream(:jobs, JobMarket.list_jobs_for_work_arrangement(preference))}
+  end
+
+  @impl true
+  def handle_event(
+        "update_work_arrangement_preference",
+        %{"work_arrangement_preference" => preference_params},
+        socket
+      ) do
+    case JobMarket.save_work_arrangement_preference(preference_params) do
+      {:ok, preference} ->
+        {:noreply,
+         socket
+         |> assign_work_arrangement_preference_form(
+           JobMarket.change_work_arrangement_preference(preference)
+         )
+         |> stream(:jobs, JobMarket.list_jobs_for_work_arrangement(preference), reset: true)}
+
+      {:error, _changeset} ->
+        preference = socket.assigns.work_arrangement_preference
+
+        {:noreply,
+         socket
+         |> put_flash(:error, "Work Arrangement preference could not be saved.")
+         |> assign_work_arrangement_preference_form(
+           JobMarket.change_work_arrangement_preference(preference)
+         )}
+    end
   end
 
   @impl true
@@ -82,12 +114,14 @@ defmodule JobMarketAnalyzerWeb.JobLive.Index do
 
   defp save_job(socket, result) do
     case result do
-      {:ok, job} ->
+      {:ok, _job} ->
+        preference = socket.assigns.work_arrangement_preference
+
         {:noreply,
          socket
          |> put_flash(:info, "Job saved.")
          |> reset_intake()
-         |> stream_insert(:jobs, job, at: 0)}
+         |> stream(:jobs, JobMarket.list_jobs_for_work_arrangement(preference), reset: true)}
 
       {:error, changeset} ->
         {:noreply, assign_job_form(socket, Map.put(changeset, :action, :insert))}
@@ -127,6 +161,53 @@ defmodule JobMarketAnalyzerWeb.JobLive.Index do
 
   defp assign_job_form(socket, changeset) do
     assign(socket, :form, to_form(changeset))
+  end
+
+  defp assign_work_arrangement_preference_form(socket, changeset) do
+    socket
+    |> assign(:work_arrangement_preference, changeset.data)
+    |> assign(:work_arrangement_preference_form, to_form(changeset))
+  end
+
+  defp work_arrangement_enabled?(form) do
+    Phoenix.HTML.Form.normalize_value("checkbox", form[:enabled].value)
+  end
+
+  defp work_arrangement_modes_selected?(form) do
+    Enum.any?(
+      [:accept_fully_remote, :accept_hybrid, :accept_on_site],
+      &Phoenix.HTML.Form.normalize_value("checkbox", form[&1].value)
+    )
+  end
+
+  attr :field, Phoenix.HTML.FormField, required: true
+  attr :label, :string, required: true
+
+  defp work_arrangement_switch(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :checked,
+        Phoenix.HTML.Form.normalize_value("checkbox", assigns.field.value)
+      )
+
+    ~H"""
+    <label for={@field.id} class="inline-flex cursor-pointer items-center gap-2">
+      <span class="text-sm font-medium">{@label}</span>
+      <span class="inline-flex">
+        <input type="hidden" name={@field.name} value="false" />
+        <input
+          type="checkbox"
+          role="switch"
+          id={@field.id}
+          name={@field.name}
+          value="true"
+          checked={@checked}
+          class="toggle toggle-primary toggle-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        />
+      </span>
+    </label>
+    """
   end
 
   defp assign_source_form(socket, url) do
@@ -380,6 +461,50 @@ defmodule JobMarketAnalyzerWeb.JobLive.Index do
             <h2 id="saved-jobs-heading" class="mt-1 text-2xl font-semibold tracking-tight">
               Saved jobs
             </h2>
+          </div>
+
+          <div
+            id="work-arrangement-filter"
+            class="rounded-box border border-base-300 bg-base-100 px-5 py-4 shadow-sm"
+          >
+            <.form
+              for={@work_arrangement_preference_form}
+              id="work-arrangement-preference-form"
+              phx-change="update_work_arrangement_preference"
+            >
+              <.work_arrangement_switch
+                field={@work_arrangement_preference_form[:enabled]}
+                label="Work Arrangement"
+              />
+
+              <div
+                id="work-arrangement-mode-options"
+                hidden={!work_arrangement_enabled?(@work_arrangement_preference_form)}
+                class="ml-6 border-l border-base-300 pl-4"
+              >
+                <p
+                  :if={!work_arrangement_modes_selected?(@work_arrangement_preference_form)}
+                  id="work-arrangement-instruction"
+                  class="mb-3 text-sm text-base-content/65"
+                >
+                  Please select your preferred Work Arrangement(s).
+                </p>
+                <div class="flex flex-col items-start gap-3">
+                  <.work_arrangement_switch
+                    field={@work_arrangement_preference_form[:accept_fully_remote]}
+                    label="Fully remote"
+                  />
+                  <.work_arrangement_switch
+                    field={@work_arrangement_preference_form[:accept_hybrid]}
+                    label="Hybrid"
+                  />
+                  <.work_arrangement_switch
+                    field={@work_arrangement_preference_form[:accept_on_site]}
+                    label="On-site"
+                  />
+                </div>
+              </div>
+            </.form>
           </div>
 
           <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-sm">

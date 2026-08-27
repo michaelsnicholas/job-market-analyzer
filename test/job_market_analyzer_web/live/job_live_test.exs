@@ -12,6 +12,23 @@ defmodule JobMarketAnalyzerWeb.JobLiveTest do
     test "renders URL-first intake and the empty saved-jobs corpus", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 
+      refute has_element?(view, "#work-arrangement-preferences")
+      assert has_element?(view, "#saved-jobs #work-arrangement-filter")
+      assert has_element?(view, "#work-arrangement-preference-form")
+      assert has_element?(view, "#work_arrangement_preference_enabled:not(:checked)")
+      assert has_element?(view, "#work-arrangement-mode-options[hidden]")
+      refute has_element?(view, "#save-work-arrangement-preference")
+
+      for {id, label} <- [
+            {"work_arrangement_preference_enabled", "Work Arrangement"},
+            {"work_arrangement_preference_accept_fully_remote", "Fully remote"},
+            {"work_arrangement_preference_accept_hybrid", "Hybrid"},
+            {"work_arrangement_preference_accept_on_site", "On-site"}
+          ] do
+        assert has_element?(view, "label[for='#{id}'].inline-flex", label)
+        assert has_element?(view, "##{id}[type='checkbox'][role='switch'].toggle.toggle-primary")
+      end
+
       assert has_element?(view, "#job-intake")
       assert has_element?(view, "#source-acquisition-form")
       assert has_element?(view, "#enter-manually", "Enter manually")
@@ -19,6 +36,145 @@ defmodule JobMarketAnalyzerWeb.JobLiveTest do
       assert has_element?(view, "#saved-jobs")
       assert has_element?(view, "#jobs-empty", "No jobs saved yet.")
       assert has_element?(view, "#client-error:not([phx-hook])")
+    end
+
+    test "persists Work Arrangement disclosure and selections immediately", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      view
+      |> form("#work-arrangement-preference-form",
+        work_arrangement_preference: %{
+          enabled: true,
+          accept_fully_remote: false,
+          accept_hybrid: false,
+          accept_on_site: false
+        }
+      )
+      |> render_change()
+
+      assert has_element?(
+               view,
+               "#work-arrangement-instruction",
+               "Please select your preferred Work Arrangement(s)."
+             )
+
+      refute has_element?(view, "#work-arrangement-preference-form p.text-error")
+      assert JobMarket.get_work_arrangement_preference().enabled
+
+      view
+      |> form("#work-arrangement-preference-form",
+        work_arrangement_preference: %{
+          enabled: true,
+          accept_fully_remote: true,
+          accept_hybrid: true,
+          accept_on_site: false
+        }
+      )
+      |> render_change()
+
+      preference = JobMarket.get_work_arrangement_preference()
+      assert preference.enabled
+      assert preference.accept_fully_remote
+      assert preference.accept_hybrid
+      refute preference.accept_on_site
+      refute has_element?(view, "#work-arrangement-instruction")
+
+      view
+      |> form("#work-arrangement-preference-form",
+        work_arrangement_preference: %{enabled: false}
+      )
+      |> render_change()
+
+      preference = JobMarket.get_work_arrangement_preference()
+      refute preference.enabled
+      assert preference.accept_fully_remote
+      assert preference.accept_hybrid
+
+      view
+      |> form("#work-arrangement-preference-form",
+        work_arrangement_preference: %{enabled: true}
+      )
+      |> render_change()
+
+      assert has_element?(view, "#work_arrangement_preference_accept_fully_remote:checked")
+      assert has_element?(view, "#work_arrangement_preference_accept_hybrid:checked")
+    end
+
+    test "reverts the control and reports an immediate persistence error" do
+      socket = mounted_socket()
+
+      {:noreply, socket} =
+        Index.handle_event(
+          "update_work_arrangement_preference",
+          %{"work_arrangement_preference" => %{"enabled" => "not-a-boolean"}},
+          socket
+        )
+
+      assert render_socket(socket) =~ "Work Arrangement preference could not be saved."
+      refute socket.assigns.work_arrangement_preference.enabled
+      refute JobMarket.get_work_arrangement_preference().enabled
+    end
+
+    test "filters only deterministic failures and restores jobs as selections change", %{
+      conn: conn
+    } do
+      remote = job_fixture(%{role: "Remote role", raw_description: "This role is fully remote."})
+      onsite = job_fixture(%{role: "On-site role", raw_description: "Location Type: On-site"})
+      unknown = job_fixture(%{role: "Unknown role", raw_description: "Location: Central City."})
+
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      assert has_element?(view, "#jobs-#{remote.id}")
+      assert has_element?(view, "#jobs-#{onsite.id}")
+      assert has_element?(view, "#jobs-#{unknown.id}")
+
+      update_work_arrangement_filter(view, %{
+        enabled: true,
+        accept_fully_remote: true,
+        accept_hybrid: false,
+        accept_on_site: false
+      })
+
+      assert has_element?(view, "#jobs-#{remote.id}")
+      refute has_element?(view, "#jobs-#{onsite.id}")
+      assert has_element?(view, "#jobs-#{unknown.id}")
+
+      update_work_arrangement_filter(view, %{
+        enabled: true,
+        accept_fully_remote: false,
+        accept_hybrid: false,
+        accept_on_site: true
+      })
+
+      refute has_element?(view, "#jobs-#{remote.id}")
+      assert has_element?(view, "#jobs-#{onsite.id}")
+      assert has_element?(view, "#jobs-#{unknown.id}")
+
+      update_work_arrangement_filter(view, %{enabled: false})
+
+      assert has_element?(view, "#work-arrangement-mode-options[hidden]")
+      assert has_element?(view, "#jobs-#{remote.id}")
+      assert has_element?(view, "#jobs-#{onsite.id}")
+      assert has_element?(view, "#jobs-#{unknown.id}")
+
+      update_work_arrangement_filter(view, %{enabled: true})
+
+      refute has_element?(view, "#jobs-#{remote.id}")
+      assert has_element?(view, "#jobs-#{onsite.id}")
+      assert has_element?(view, "#jobs-#{unknown.id}")
+
+      update_work_arrangement_filter(view, %{
+        enabled: true,
+        accept_fully_remote: false,
+        accept_hybrid: false,
+        accept_on_site: false
+      })
+
+      assert has_element?(view, "#work-arrangement-instruction")
+      assert has_element?(view, "#jobs-#{remote.id}")
+      assert has_element?(view, "#jobs-#{onsite.id}")
+      assert has_element?(view, "#jobs-#{unknown.id}")
+      assert length(JobMarket.list_jobs()) == 3
     end
 
     test "manual entry validates, cancels, and preserves manual provenance", %{conn: conn} do
@@ -377,5 +533,99 @@ defmodule JobMarketAnalyzerWeb.JobLiveTest do
       assert has_element?(view, "#work-arrangement", "No sufficiently explicit")
       refute has_element?(view, "#work-arrangement-evidence")
     end
+
+    test "displays a passing Work Arrangement evaluation with accepted modes", %{conn: conn} do
+      save_work_arrangement_preference!(%{
+        enabled: true,
+        accept_fully_remote: true,
+        accept_hybrid: true
+      })
+
+      job = job_fixture(%{raw_description: "This role is fully remote."})
+      {:ok, view, _html} = live(conn, ~p"/jobs/#{job}")
+
+      assert has_element?(view, "#work-arrangement-evaluation-status", "Pass")
+      assert has_element?(view, "#work-arrangement-accepted-modes", "Fully remote")
+      assert has_element?(view, "#work-arrangement-accepted-modes", "Hybrid")
+      assert has_element?(view, "#work-arrangement-evidence", "fully remote")
+    end
+
+    test "displays a failing Work Arrangement evaluation", %{conn: conn} do
+      save_work_arrangement_preference!(%{enabled: true, accept_hybrid: true})
+
+      job = job_fixture(%{raw_description: "Location Type: On-site"})
+      {:ok, view, _html} = live(conn, ~p"/jobs/#{job}")
+
+      assert has_element?(view, "#work-arrangement-evaluation-status", "Fail")
+      assert has_element?(view, "#work-arrangement-modes", "On-site")
+      assert has_element?(view, "#work-arrangement-accepted-modes", "Hybrid")
+    end
+
+    test "displays an unknown evaluation without guessing", %{conn: conn} do
+      save_work_arrangement_preference!(%{enabled: true, accept_hybrid: true})
+
+      job = job_fixture(%{raw_description: "Location: Central City."})
+      {:ok, view, _html} = live(conn, ~p"/jobs/#{job}")
+
+      assert has_element?(view, "#work-arrangement-evaluation-status", "Unknown")
+
+      assert has_element?(
+               view,
+               "#work-arrangement-evaluation",
+               "Semantic verification is not yet implemented"
+             )
+
+      assert has_element?(view, "#work-arrangement-status", "Unknown")
+    end
+
+    test "displays not applicable when Work Arrangement screening is disabled", %{conn: conn} do
+      save_work_arrangement_preference!(%{
+        enabled: false,
+        accept_fully_remote: true
+      })
+
+      job = job_fixture(%{raw_description: "This role is fully remote."})
+      {:ok, view, _html} = live(conn, ~p"/jobs/#{job}")
+
+      assert has_element?(view, "#work-arrangement-evaluation-status", "Not applicable")
+
+      assert has_element?(
+               view,
+               "#work-arrangement-evaluation",
+               "No Work Arrangement modes are currently active"
+             )
+
+      refute has_element?(view, "#work-arrangement-accepted-modes")
+      assert has_element?(view, "#work-arrangement-modes", "Fully remote")
+    end
+
+    test "displays not applicable when disclosure is open with no selected modes", %{conn: conn} do
+      save_work_arrangement_preference!(%{enabled: true})
+
+      job = job_fixture(%{raw_description: "This role is fully remote."})
+      {:ok, view, _html} = live(conn, ~p"/jobs/#{job}")
+
+      assert has_element?(view, "#work-arrangement-evaluation-status", "Not applicable")
+
+      assert has_element?(
+               view,
+               "#work-arrangement-evaluation",
+               "No Work Arrangement modes are currently active"
+             )
+
+      refute has_element?(view, "#work-arrangement-accepted-modes")
+      assert has_element?(view, "#work-arrangement-modes", "Fully remote")
+    end
+  end
+
+  defp save_work_arrangement_preference!(attrs) do
+    {:ok, preference} = JobMarket.save_work_arrangement_preference(attrs)
+    preference
+  end
+
+  defp update_work_arrangement_filter(view, attrs) do
+    view
+    |> form("#work-arrangement-preference-form", work_arrangement_preference: attrs)
+    |> render_change()
   end
 end

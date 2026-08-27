@@ -10,7 +10,9 @@ defmodule JobMarketAnalyzer.JobMarket do
     SourceAcquisition.Draft,
     SourceAcquisition.Extractor,
     SourceAcquisition.GuardedFetcher,
-    WorkArrangement
+    WorkArrangement,
+    WorkArrangement.Evaluation,
+    WorkArrangementPreference
   }
 
   alias JobMarketAnalyzer.Repo
@@ -36,6 +38,63 @@ defmodule JobMarketAnalyzer.JobMarket do
   """
   def extract_work_arrangement(%Job{raw_description: raw_description}) do
     WorkArrangement.extract(raw_description)
+  end
+
+  @doc """
+  Gets the local Work Arrangement preference or returns its hidden, inactive default.
+  """
+  def get_work_arrangement_preference do
+    Repo.get(WorkArrangementPreference, 1) || WorkArrangementPreference.default()
+  end
+
+  @doc """
+  Returns a changeset for validating or editing the Work Arrangement preference.
+  """
+  def change_work_arrangement_preference(
+        %WorkArrangementPreference{} = preference,
+        attrs \\ %{}
+      ) do
+    WorkArrangementPreference.changeset(preference, attrs)
+  end
+
+  @doc """
+  Saves the singleton local Work Arrangement preference.
+  """
+  def save_work_arrangement_preference(attrs) do
+    get_work_arrangement_preference()
+    |> WorkArrangementPreference.changeset(attrs)
+    |> Repo.insert_or_update()
+  end
+
+  @doc """
+  Recomputes and evaluates a saved job's deterministic Work Arrangement fact.
+  """
+  def evaluate_work_arrangement(%Job{} = job) do
+    preference = get_work_arrangement_preference()
+
+    evaluate_work_arrangement(job, preference)
+  end
+
+  @doc """
+  Lists the current Saved jobs projection, excluding only deterministic Work Arrangement failures.
+  """
+  def list_jobs_for_work_arrangement(%WorkArrangementPreference{} = preference) do
+    Enum.reject(list_jobs(), fn job ->
+      evaluate_work_arrangement(job, preference).status == :fail
+    end)
+  end
+
+  defp evaluate_work_arrangement(job, preference) do
+    active_arrangements =
+      if preference.enabled do
+        WorkArrangementPreference.accepted_arrangements(preference)
+      else
+        []
+      end
+
+    job
+    |> extract_work_arrangement()
+    |> Evaluation.evaluate(active_arrangements)
   end
 
   @doc """

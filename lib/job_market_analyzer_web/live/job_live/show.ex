@@ -6,17 +6,36 @@ defmodule JobMarketAnalyzerWeb.JobLive.Show do
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     job = JobMarket.get_job!(id)
+    evaluation = JobMarket.evaluate_work_arrangement(job)
 
     {:ok,
      socket
      |> assign(:page_title, job.role || "Saved job")
      |> assign(:job, job)
-     |> assign(:work_arrangement, JobMarket.extract_work_arrangement(job))}
+     |> assign(:work_arrangement_evaluation, evaluation)
+     |> assign(:work_arrangement, evaluation.fact)}
   end
 
   defp arrangement_label(:fully_remote), do: "Fully remote"
   defp arrangement_label(:hybrid), do: "Hybrid"
   defp arrangement_label(:on_site), do: "On-site"
+
+  defp evaluation_label(:pass), do: "Pass"
+  defp evaluation_label(:fail), do: "Fail"
+  defp evaluation_label(:unknown), do: "Unknown"
+  defp evaluation_label(:not_applicable), do: "Not applicable"
+
+  defp evaluation_explanation(:pass),
+    do: "The explicit Work Arrangement matches an accepted mode."
+
+  defp evaluation_explanation(:fail),
+    do: "The explicit Work Arrangement does not match any accepted mode."
+
+  defp evaluation_explanation(:unknown),
+    do: "Deterministic evidence was insufficient. Semantic verification is not yet implemented."
+
+  defp evaluation_explanation(:not_applicable),
+    do: "No Work Arrangement modes are currently active."
 
   defp unknown_explanation(:no_explicit_evidence),
     do: "No sufficiently explicit work arrangement was found."
@@ -69,6 +88,34 @@ defmodule JobMarketAnalyzerWeb.JobLive.Show do
             <p class="text-xs text-base-content/55">
               Deterministic extraction · v{@work_arrangement.extractor_version}
             </p>
+          </div>
+
+          <div id="work-arrangement-evaluation" class="mt-4 rounded-box bg-base-200 p-4">
+            <p class="text-xs font-medium uppercase tracking-wide text-base-content/55">
+              Deterministic evaluation
+            </p>
+            <p id="work-arrangement-evaluation-status" class="mt-1 text-lg font-semibold">
+              {evaluation_label(@work_arrangement_evaluation.status)}
+            </p>
+            <p class="mt-1 text-sm leading-6 text-base-content/65">
+              {evaluation_explanation(@work_arrangement_evaluation.status)}
+            </p>
+
+            <div
+              :if={@work_arrangement_evaluation.status != :not_applicable}
+              id="work-arrangement-accepted-modes"
+              class="mt-3"
+            >
+              <p class="text-xs text-base-content/55">Accepted modes</p>
+              <div class="mt-1 flex flex-wrap gap-2">
+                <span
+                  :for={arrangement <- @work_arrangement_evaluation.accepted_arrangements}
+                  class="badge badge-outline"
+                >
+                  {arrangement_label(arrangement)}
+                </span>
+              </div>
+            </div>
           </div>
 
           <div :if={@work_arrangement.status == :known} class="mt-4 space-y-4">
