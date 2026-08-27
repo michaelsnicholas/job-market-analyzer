@@ -22,11 +22,25 @@ Before proposing or modifying project code:
 
 ## Documentation maintenance
 
-- `docs/STATUS.md` is the concise snapshot of current project state, current repository state, next intended work, open questions, and blockers. Keep it current and brief.
+- `docs/STATUS.md` is the concise snapshot of current project state, durable repository baseline, next intended work, open questions, and blockers. Keep it current and brief.
 - `docs/PROJECT.md` is the canonical source of current product and architecture truth. Update it whenever an accepted change makes it inaccurate.
 - Update current-state documentation in the same commit as the implementation change that makes it inaccurate.
 - At the end of every meaningful completed development slice, update `docs/STATUS.md`.
 - Do not turn `STATUS.md` or `PROJECT.md` into chronological diaries. Git history is the implementation history.
+
+### Slice-completion documentation gate
+
+Before a development slice is considered complete:
+
+- Reconcile `docs/STATUS.md` with the final implementation so that it describes the durable project state expected after the commit.
+- Reconcile `docs/PROJECT.md` whenever the slice changes current product or architecture truth.
+- Review relevant ADRs for continued applicability or the need for a separately approved superseding ADR.
+- Remove temporary implementation-plan, review, staging, pre-commit, and other transient process language from continuity documentation.
+- Do not describe only the temporary state immediately before the commit; documentation included with the slice must remain accurate once that commit exists.
+
+Ephemeral Git state belongs in verification and handoff reporting, not in version-controlled `STATUS.md`. Verify and report working-tree cleanliness, pending commit or push state, exact HEAD, ahead/behind counts, and remote synchronization when relevant, but do not store those mutable facts as project status.
+
+After committing and, when authorized, pushing, check the continuity documentation once more against HEAD. Do not report a slice complete while a known continuity-document discrepancy remains.
 
 ## ADR discipline
 

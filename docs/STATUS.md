@@ -9,7 +9,7 @@
 - The staged gate/analysis architecture is accepted: preserved source, deterministic facts, mutable preferences, gate evaluation, semantic verification, and full analysis have distinct responsibilities and lifecycles. Screened Out will be derived from current evaluations rather than stored as permanent job state.
 - The public repository is [michaelsnicholas/job-market-analyzer](https://github.com/michaelsnicholas/job-market-analyzer), with `main` as its default branch.
 - Deterministic Work Arrangement extraction is implemented as an experimental, versioned plain Elixir domain result recomputed from each saved raw description. It returns known explicitly offered modes or unknown, preserves exact byte-indexed evidence and rule identity, and appears on the job detail page.
-- URL-first intake architecture is accepted in ADR-002: guarded retrieval will produce a reviewable draft that converges with manual capture on user-approved canonical text, with lightweight Job provenance and human review before persistence.
+- URL-first intake architecture is accepted in ADR-002: guarded retrieval produces a reviewable draft that converges with manual capture on user-approved canonical text, with lightweight Job provenance and human review before persistence.
 - The first URL-intake implementation slice provides a guarded, bounded public-source fetch primitive. It validates every URL/DNS/IP hop, pins each request to a selected public address, handles redirects itself, and returns transient response or stable error data.
 - Structured `JobPosting`, conservatively DOM-reconciled structured descriptions, generic HTML, or plain-text extraction and transient reviewable Draft construction are implemented behind the guarded fetcher. Drafts retain source URLs and acquisition time, preserve the initial extracted text for later edit detection, and carry deterministic metadata suggestions, method/version information, and stable warnings without persistence.
 - Job provenance persistence and separate manual/URL-acquired context creation contracts are implemented. Manual attributes cannot forge acquisition history; reviewed URL-derived Jobs take provenance from a trusted Draft and record exact source-text modification status.
@@ -22,7 +22,7 @@ The fourth URL-intake slice adds the LiveView acquisition, review, and explicit-
 
 ## Next Intended Slice
 
-Evaluate the completed URL-first workflow through local browser use and decide the next product slice separately. No later URL-acquisition or analysis work is authorized yet.
+Decide the next product slice based on the completed URL-first workflow and the accepted analysis architecture. No later URL-acquisition or analysis work is authorized yet.
 
 ## Accepted URL-Intake Architecture
 
@@ -47,5 +47,5 @@ Final Work Arrangement rules remain experimental. General gate design, determini
 
 ## Repository State
 
-- Branch: `main`.
-- Working tree: contains the approved Slice 4 LiveView implementation, tests, and current-state documentation changes pending review; no commit or push has been made for this slice.
+- Primary branch: `main`.
+- The completed Slice 4 URL acquisition/review/save workflow is the current development baseline.
